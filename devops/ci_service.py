@@ -15,7 +15,7 @@ def trigger():
 
     #for now
     try:
-        subprocess.check_call(["/app/devops/ci_pipeline.sh"])
+        subprocess.check_call(["./ci_pipeline.sh"])
         return jsonify({"status": "Success"}), 200
     except subprocess.CalledProcessError as e:
         return jsonify({"status" : "Failed", "Error": str(e)}),500

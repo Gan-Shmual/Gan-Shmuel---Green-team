@@ -3,7 +3,8 @@
 set -e
 
 WORKDIR=/workspace
-REPO_URL=git@github.com:Gan-Shmual/Gan-Shmuel---Green-team.git
+REPO_URL=https://github.com/Gan-Shmual/Gan-Shmuel---Green-team.git
+
 
 REPO_NAME=Gan-Shmuel---Green-team
 REPO_DIR="$WORKDIR/$REPO_NAME"
@@ -37,11 +38,11 @@ git pull origin "$CI_BRANCH"
 echo "[CI] Building docker images..."
 ##this part is where I need to discuss with the team,if we have one SQL container or seperate containers(seperate for now)
 
-docker build -t billing-service ./billing-service
-docker build -t weight-service ./weight-service
+# docker build -t billing-service ./billing-service
+# docker build -t weight-service ./weight-service
 
 
-echo "[CI] Docker compose building..."
-docker compose -f docker-compose.yml up -d --build
+# echo "[CI] Docker compose building..."
+# docker compose -f docker-compose.yml up -d --build
 
 echo "[CI] Deployment finished successfully"
