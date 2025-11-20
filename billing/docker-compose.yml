@@ -1,0 +1,48 @@
+services:
+  # Service 1: The Flask Application
+  billing-service:
+    build: .
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+
+  # Service 2: The MySQL Database
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_TCP_PORT=${DB_PORT}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./data/init:/docker-entrypoint-initdb.d:z
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_PASSWORD}",
+        ]
+      interval: 20s # Increased slightly to give MySQL time to breathe
+      timeout: 5s
+      retries: 5
+
+# Define volume for persistence
+volumes:
+  db_data:
