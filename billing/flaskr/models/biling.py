@@ -1,6 +1,7 @@
 from datetime import datetime, date, time
 from sqlalchemy import Integer, String, Date, Time, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy import ForeignKey
 from flaskr.db import db
 
 class Provider(db.Model):
