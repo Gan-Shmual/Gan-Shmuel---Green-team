@@ -4,7 +4,7 @@ WORKDIR /app
 
 
 RUN apt-get update && \
-    apt-get install -y git docker.io && \
+    apt-get install -y git docker.io curl && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

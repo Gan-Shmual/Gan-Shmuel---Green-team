@@ -5,7 +5,10 @@ services:
     build: ./devops
     container_name: devops-ci
     ports:
-      - "8000:8000"
+      - "8080:8000"
+    environment:
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       # Allow CI container to run Docker commands on the host
       - /var/run/docker.sock:/var/run/docker.sock
