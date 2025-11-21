@@ -1,17 +1,14 @@
-version: "3.9"
+version :"3.9"
 
 services:
-  devops-ci:
-    build: ./devops
-    container_name: devops-ci
+  billing-service:
+    build: ./billing-service
+    container_name: billing-service
     ports:
-      - "8080:8000"
-    environment:
-      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-    volumes:
-      # Allow CI container to run Docker commands on the host
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "8001:8000"
 
-      # Workspace where we clone + build the repo
-      - ./ci-workspace:/workspace
+  weight-service:
+    build: ./weight-service
+    container_name: weight-service
+    ports:
+      - "8002:8000"

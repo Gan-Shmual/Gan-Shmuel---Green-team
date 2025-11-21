@@ -6,7 +6,7 @@ WORKDIR=/workspace
 REPO_NAME=Gan-Shmuel---Green-team
 REPO_DIR="$WORKDIR/$REPO_NAME"
 CI_BRANCH=development
-REPO_URL=https://${GITHUB_TOKEN}github.com/Gan-Shmual/Gan-Shmuel---Green-team.git
+REPO_URL=https://${GITHUB_TOKEN}@github.com/Gan-Shmual/Gan-Shmuel---Green-team.git
 
 echo "[CI] using workspace : $WORKDIR"
 mkdir -p "$WORKDIR"
@@ -40,6 +40,6 @@ echo "[CI] Building docker images..."
 
 
 echo "[CI] Docker compose building..."
-docker compose -f docker-compose.yml up -d --build
+docker-compose -f docker-compose.yml up -d --build
 
 echo "[CI] Deployment finished successfully"
