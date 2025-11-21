@@ -1,0 +1,48 @@
+services:
+  # Your Flask application service
+  health-app:
+    build: ./Health-api
+    ports:
+      - "5002:5000"
+    environment:
+      # These environment variables are passed to your app inside the container
+      - DB_HOST=weight-db
+      - DB_USER=weight_user
+      - DB_PASSWORD=password
+      - DB_NAME=weight
+    depends_on:
+      weight-db:
+        condition: service_healthy # Waits for the DB to be ready
+
+  get-weight:
+    build: ./Get-weight
+    ports:
+    - 5001:5000
+    environment:
+      - DB_HOST=weight-db
+      - DB_USER=weight_user
+      - DB_PASSWORD=password
+      - DB_NAME=weight
+    depends_on:
+      weight-db:
+        condition: service_healthy
+
+  # The MySQL database service
+  weight-db:
+    image: mysql:8.0
+    environment:
+      # These variables configure the MySQL container on its first run
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=weight
+      - MYSQL_USER=WeightGet
+      - MYSQL_PASSWORD=Pass
+    volumes:
+      # This is the magic part: it automatically runs your schema.sql file
+      # when the database container starts for the first time.
+      - ./DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      # Docker will use this command to check if the DB is ready for connections
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
