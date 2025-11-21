@@ -1,0 +1,12 @@
+services:
+  billing:
+    build: ./billing
+    container_name: billing-test
+    ports:
+      - "8001:8000"   
+
+  weight:
+    build: ./weight
+    container_name: weight-test
+    ports:
+      - "8002:8000"

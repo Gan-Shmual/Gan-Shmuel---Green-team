@@ -6,6 +6,10 @@ services:
     container_name: devops-ci
     ports:
       - "8080:8000"
+      #for testing internally (curl for health for now,well can change them later)
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
+
     environment:
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
       - GITHUB_TOKEN=${GITHUB_TOKEN}

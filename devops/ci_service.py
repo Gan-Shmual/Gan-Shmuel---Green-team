@@ -56,7 +56,7 @@ def webhook():
 def trigger():
     payload = request.get_json()
     try:
-        subprocess.check_call(["./ci_pipline.sh"])
+        subprocess.check_call(["./ci_pipeline.sh"])
         return jsonify({"status: Success"}), 200
     except subprocess.CalledProcessError as e:
         return jsonify({"status": "Failed", "Error": str(e)}), 500
