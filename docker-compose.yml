@@ -1,9 +1,9 @@
-version "3.9"
+version :"3.9"
 
 services:
   billing-service:
     build: ./billing-service
-    containcer_name: billing-service
+    container_name: billing-service
     ports:
       - "8001:8000"
 
