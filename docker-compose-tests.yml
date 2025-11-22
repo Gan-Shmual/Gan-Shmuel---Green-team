@@ -3,7 +3,7 @@ services:
     build: ./billing
     container_name: billing-test
     ports:
-      - "8001:8000"   
+      - "8001:8000"
 
   weight:
     build: ./weight

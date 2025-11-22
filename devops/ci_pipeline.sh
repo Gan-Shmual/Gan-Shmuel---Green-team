@@ -5,7 +5,7 @@ set -e
 WORKDIR=/workspace
 REPO_NAME=Gan-Shmuel---Green-team
 REPO_DIR="$WORKDIR/$REPO_NAME"
-CI_BRANCH=development
+CI_BRANCH=dev/testsEnv ##TEMP,i'll change it back to development
 REPO_URL=https://${GITHUB_TOKEN}@github.com/Gan-Shmual/Gan-Shmuel---Green-team.git
 
 echo "[CI] using workspace : $WORKDIR"
@@ -38,8 +38,18 @@ docker compose -f docker-compose-tests.yml up -d --build
 echo "[CI]Test envoirment built successfully"
 #testing health for now,we'll add some SQL actions when we get a working version from billing/weight
 echo "[CI]Running health checks"
-curl -f http://host.docker.internal:8001/health
-curl -f http://host.docker.internal:8002/health
+
+
+#Need to fix this part,localhosts are not reachable from the docker-compose.test yet
+
+HOST_IP=$(ip route | awk '/default/ {print $3}')
+echo "[CI] Detected host IP: $HOST_IP"
+
+curl -sf "http://$HOST_IP:8001/health"
+curl -sf "http://$HOST_IP:8002/health"
+
+##################################
+
 
 echo "[CI]Tests passed!:"
 ##building services
