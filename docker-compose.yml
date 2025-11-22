@@ -27,6 +27,19 @@ services:
       weight-db:
         condition: service_healthy
 
+  post-api:
+    build: ./Post-api
+    ports:
+      - "5003:5000"
+    environment:
+      - DB_HOST=weight-db
+      - DB_USER=WeightGet
+      - DB_PASSWORD=Pass
+      - DB_NAME=weight
+    depends_on:
+      weight-db:
+        condition: service_healthy
+
   # The MySQL database service
   weight-db:
     image: mysql:8.0
