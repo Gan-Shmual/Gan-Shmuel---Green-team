@@ -2,9 +2,9 @@ from flask import Blueprint, request, jsonify
 from flaskr.db import db
 from flaskr.models.biling import Provider, Truck
 
-bp = Blueprint('trucks', __name__)
+trucks = Blueprint('trucks', __name__)
 
-@bp.post('/truck')
+@trucks.post('/truck')
 def create_truck():
     data = request.get_json()
     truck_id = data.get('id')
@@ -33,7 +33,7 @@ def create_truck():
     return jsonify({ 'id': new_truck.id,
         'provider_id': new_truck.provider_id }), 201
 
-@bp.put('/truck/<id>')
+@trucks.put('/truck/<id>')
 def update_truck(id):
     truck = db.session.get(Truck, id)
     if truck is None:

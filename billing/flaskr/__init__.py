@@ -33,6 +33,6 @@ def create_app(test_config=None):
 
     # register blueprints
     app.register_blueprint(main.bp)
-    app.register_blueprint(trucks.bp)
+    app.register_blueprint(trucks.trucks)
 
     return app
