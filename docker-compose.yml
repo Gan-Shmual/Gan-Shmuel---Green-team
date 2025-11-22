@@ -20,8 +20,8 @@ services:
     - 5001:5000
     environment:
       - DB_HOST=weight-db
-      - DB_USER=weight_user
-      - DB_PASSWORD=password
+      - DB_USER=WeightGet
+      - DB_PASSWORD=Pass
       - DB_NAME=weight
     depends_on:
       weight-db:
