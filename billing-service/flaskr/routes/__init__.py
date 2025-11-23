@@ -1,4 +1,4 @@
 """Initialize routes package."""
-from flaskr.routes import main, trucks, bill
+from flaskr.routes import main, trucks, bill, rates, provides
 
-__all__ = ['main', 'trucks', 'bill']
+__all__ = ['main', 'trucks', 'bill', 'rates', 'provides']

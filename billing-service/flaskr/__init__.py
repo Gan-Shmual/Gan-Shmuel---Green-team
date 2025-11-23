@@ -1,5 +1,5 @@
 import os
-from flaskr.routes import main, trucks, bill
+from flaskr.routes import main, trucks, bill, rates, provides
 from flask import Flask
 from flaskr.db import db, init_db
 from flaskr.wights import init_wights
@@ -33,5 +33,7 @@ def create_app(test_config=None):
     app.register_blueprint(main.bp)
     app.register_blueprint(trucks.trucks)
     app.register_blueprint(bill.bill)
+    app.register_blueprint(rates.rates)
+    app.register_blueprint(provides.provides)
 
     return app
