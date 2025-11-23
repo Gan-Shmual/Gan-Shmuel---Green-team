@@ -1,4 +1,3 @@
--- Drop the database if it exists to start fresh during development
 DROP DATABASE IF EXISTS weight;
 
 -- Create the database
