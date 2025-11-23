@@ -1,6 +1,7 @@
 import os
 from flaskr.routes import main
 from flaskr.routes import trucks
+from flaskr.routes import rates
 from flask import Flask
 from flaskr.db import db, init_db
 
@@ -34,5 +35,6 @@ def create_app(test_config=None):
     # register blueprints
     app.register_blueprint(main.bp)
     app.register_blueprint(trucks.trucks)
+    app.register_blueprint(rates.rates)
 
     return app

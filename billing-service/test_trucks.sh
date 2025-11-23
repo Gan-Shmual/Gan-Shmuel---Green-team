@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 # Redirect output to a log file
-exec > test_rates.log 2>&1
+exec > test_trucks.log 2>&1
 
 echo "-----STARTING TEST-----"
 docker compose up --build -d || { echo "compose failed"; exit 1; }
