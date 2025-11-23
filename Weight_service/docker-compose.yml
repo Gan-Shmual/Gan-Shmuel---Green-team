@@ -10,9 +10,12 @@ services:
       - DB_USER=weight_user
       - DB_PASSWORD=weight_pass
       - DB_NAME=weight
+      
     depends_on:
       weight-db:
         condition: service_healthy # Waits for the DB to be ready  # The MySQL database service
+    volumes:
+      - ./in:/app/in 
   weight-db:
     image: mysql:8.0
     environment:
