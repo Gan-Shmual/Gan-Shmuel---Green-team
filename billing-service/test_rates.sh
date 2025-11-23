@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 # Redirect output to a log file
-exec > test_rates.log 2>&1
+exec > test_trucks.log 2>&1
 
 echo "-----STARTING TEST-----"
 docker compose up --build -d || { echo "compose failed"; exit 1; }
+
 sleep 5
 
 # waiting for mysql
@@ -32,19 +33,12 @@ if [ $i -eq 60 ]; then
     exit 1
 fi
 
-echo "Adding a provider:" 
-curl -X POST http://localhost:5000/provider -H "Content-Type: application/json" -d '{"name": "Provider1"}' 
-echo "" 
-
-echo "Adding a provider:" 
-curl -X PUT http://localhost:5000/provider/1 -H "Content-Type: application/json" -d '{"name": "Provider1_updated"}' 
-echo "" 
-
-echo "Adding a truck:" 
-curl -X POST http://localhost:5000/truck -H "Content-Type: application/json" -d '{"id": "1234", "provider_id": 1}' 
+echo "testing updating rates"
+curl -v -X POST http://localhost:5000/rates -H "Content-Type: application/json" -d '{"filename": "rates.xlsx"}'
 echo ""
-echo "Updating the truck info:" 
-curl -X PUT http://localhost:5000/truck/1234 -H "Content-Type: application/json" -d '{"provider_id": 1}'
+
+echo "testing updating rates"
+curl -v -X POST http://localhost:5000/rates/ -F "file=@./sample_rates.xlsx" 
 echo ""
 
 docker compose down -v

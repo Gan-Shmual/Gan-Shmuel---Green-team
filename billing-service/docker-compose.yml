@@ -13,6 +13,8 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - DB_PORT=${DB_PORT}
+    volumes:
+      - ./in:/app/in
 
   # Service 2: The MySQL Database
   db:
@@ -24,7 +26,7 @@ services:
       - MYSQL_TCP_PORT=${DB_PORT}
     volumes:
       - db_data:/var/lib/mysql
-      - ./data/init:/docker-entrypoint-initdb.d:z
+      - ./data/init:/docker-entrypoint-initdb.d
     ports:
       - ${DB_PORT}:${DB_PORT}
     healthcheck:
