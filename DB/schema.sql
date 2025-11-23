@@ -1,4 +1,3 @@
--- Drop the database if it exists to start fresh during development
 DROP DATABASE IF EXISTS weight;
 
 -- Create the database
@@ -10,7 +9,7 @@ USE weight;
 -- Table to store registered containers and their tara weight
 CREATE TABLE containers (
     id VARCHAR(255) PRIMARY KEY,
-    weight_kg INT,
+    weight INT,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
@@ -19,13 +18,13 @@ CREATE TABLE IF NOT EXISTS transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     datetime DATETIME,
     direction VARCHAR(10),
-    truck_id VARCHAR(50),       -- Python calls this 'truck_id', not 'truck'
-    containers VARCHAR(255),    -- This was the missing column causing the error!
-    bruto_kg INT,              -- Python calls this 'bruto_kg'
-    truck_tara_kg INT,         -- Python calls this 'truck_tara_kg'
-    neto_kg INT,               -- Python calls this 'neto_kg'
+    truck VARCHAR(50),
+    containers VARCHAR(10000),
+    bruto INT(12),
+    truckTara INT(12),
+    neto INT(12),
     produce VARCHAR(50),
-    session_id INT
+    session_id INT(12)
 );
 
 
@@ -41,11 +40,11 @@ CREATE TABLE transaction_containers (
 );
 
 -- Insert Data (Updated to match the new column names)
-INSERT INTO transactions (datetime, direction, truck_id, containers, bruto_kg, truck_tara_kg, neto_kg, produce, session_id) 
+INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce, session_id) 
 VALUES ('2025-11-21 08:30:00', 'in', '77-123-45', 'CNT-101', 15000, 5000, 10000, 'Oranges', 1001);
 
-INSERT INTO transactions (datetime, direction, truck_id, containers, bruto_kg, truck_tara_kg, neto_kg, produce, session_id) 
+INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce, session_id) 
 VALUES ('2025-11-21 10:15:00', 'out', '77-123-45', 'CNT-101', 5000, 5000, 0, 'na', 1001);
 
-INSERT INTO transactions (datetime, direction, truck_id, containers, bruto_kg, truck_tara_kg, neto_kg, produce, session_id) 
+INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce, session_id) 
 VALUES ('2025-11-21 12:00:00', 'in', '88-999-00', 'CNT-202', 30000, 12000, 18000, 'Tomatoes', 1002);
