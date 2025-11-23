@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flaskr.db import db
 from flaskr.models.biling import Provider, Truck
 
-provider = Blueprint('main', __name__)
+provider = Blueprint('provider', __name__)
 
 @provider.post('/provider')
 def create_provider():
