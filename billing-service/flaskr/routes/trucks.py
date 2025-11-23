@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flaskr.db import db
 from flaskr.models.biling import Provider, Truck
+import requests
 
+base_path="localhost:5000"
 trucks = Blueprint('trucks', __name__)
 
 @trucks.post('/truck')
@@ -51,3 +53,23 @@ def update_truck(id):
     db.session.commit()
 
     return jsonify({ 'id': truck.id, 'provider_id': truck.provider_id }), 200
+
+@trucks.get('/truck/<truck_id>')
+def get_truck(truck_id):
+    t1 = request.args.get('from')
+    t2 = request.args.get('to')
+
+    response = requests.get(
+        f"http://{base_path}/item/{truck_id}",
+        params={"from": t1, "to": t2}
+    )
+    if not response.ok:
+        return jsonify({"error": "Truck not found"}), response.status_code
+
+    data = response.json()
+
+    return jsonify({
+        "truck_id": data["id"],
+        "tara": data["tara"],
+        "sessions": data["sessions"]
+    }), 200
