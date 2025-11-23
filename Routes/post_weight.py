@@ -46,9 +46,9 @@ def get_last_weigh(truck):
     conn = get_db()
     # We select specific columns to map them to a dictionary manually
     sql = """
-        SELECT id, direction, session_id, bruto_kg, datetime
+        SELECT id, direction, session_id, bruto, datetime
         FROM transactions
-        WHERE truck_id = %s
+        WHERE truck = %s
         ORDER BY datetime DESC
         LIMIT 1;
     """
@@ -58,13 +58,13 @@ def get_last_weigh(truck):
         row = cur.fetchone()
         
         # Helper: Convert Tuple to Dict so the rest of your logic works
-        # tuple index: 0=id, 1=direction, 2=session_id, 3=bruto_kg, 4=datetime
+        # tuple index: 0=id, 1=direction, 2=session_id, 3=bruto, 4=datetime
         if row:
             return {
                 "id": row[0],
                 "direction": row[1],
                 "session_id": row[2],
-                "bruto_kg": row[3],
+                "bruto": row[3],
                 "datetime": row[4]
             }
     return None
@@ -114,7 +114,7 @@ def save_transaction(direction, truck, containers, bruto, produce, session_id, l
         if last_weigh and direction == last_weigh["direction"] and force:
             sql = """
                 UPDATE transactions
-                SET direction=%s, truck_id=%s, containers=%s, bruto_kg=%s, produce=%s, datetime=NOW()
+                SET direction=%s, truck=%s, containers=%s, bruto=%s, produce=%s, datetime=NOW()
                 WHERE id=%s;
             """
             params = (direction, truck, ",".join(containers), bruto, produce, last_weigh["id"])
@@ -123,7 +123,7 @@ def save_transaction(direction, truck, containers, bruto, produce, session_id, l
         else:
             sql = """
                 INSERT INTO transactions
-                (direction, truck_id, containers, bruto_kg, produce, session_id, datetime)
+                (direction, truck, containers, bruto, produce, session_id, datetime)
                 VALUES (%s, %s, %s, %s, %s, %s, NOW());
             """
             params = (direction, truck, ",".join(containers), bruto, produce, session_id)
@@ -150,12 +150,12 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out):
     with conn.cursor() as cur:
         # 1. Get IN bruto (Truck Tara)
         cur.execute("""
-            SELECT bruto_kg FROM transactions
+            SELECT bruto FROM transactions
             WHERE session_id = %s AND direction='in'
             ORDER BY datetime DESC LIMIT 1;
         """, (session_id,))
         
-        prev = cur.fetchone() # returns tuple (bruto_kg,)
+        prev = cur.fetchone() # returns tuple (bruto,)
         truck_tara = prev[0] if prev else None
 
         # 2. Container Taras
@@ -164,8 +164,8 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out):
         
         # Loop through container IDs
         for cid in containers:
-            cur.execute("SELECT weight_kg FROM containers WHERE id=%s", (cid,))
-            row = cur.fetchone() # returns tuple (weight_kg,)
+            cur.execute("SELECT weight FROM containers WHERE id=%s", (cid,))
+            row = cur.fetchone() # returns tuple (weight,)
             if row is None:
                 unknown = True
             else:
@@ -175,7 +175,7 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out):
 
         # 3. Update OUT row
         cur.execute("""
-            UPDATE transactions SET truck_tara_kg=%s, neto_kg=%s WHERE id=%s;
+            UPDATE transactions SET truckTara=%s, neto=%s WHERE id=%s;
         """, (truck_tara, neto, transaction_id))
     
     conn.commit()
@@ -231,7 +231,7 @@ def post_weight():
         return jsonify({"error": "force must be true/false"}), 400
 
     containers = parse_containers(data["containers"])
-    weight_kg = convert_to_kg(weight, unit)
+    weight = convert_to_kg(weight, unit)
 
     try:
         # last weigh
@@ -246,7 +246,7 @@ def post_weight():
         session_id = resolve_session_id(direction, last)
 
         # write to db
-        tx_id = save_transaction(direction, truck, containers, weight_kg, produce, session_id, last, force)
+        tx_id = save_transaction(direction, truck, containers, weight, produce, session_id, last, force)
         
         if direction in ["in", "none"]:
             session_id = tx_id
@@ -255,10 +255,10 @@ def post_weight():
         truck_tara = None
         neto = None
         if direction == "out":
-            truck_tara, neto = calculate_out_values(tx_id, session_id, containers, weight_kg)
+            truck_tara, neto = calculate_out_values(tx_id, session_id, containers, weight)
 
         # response
-        return jsonify(build_response(direction, tx_id, truck, weight_kg, truck_tara, neto)), 200 # Changed to 201 for creation ideally, but keeping 200 per your code
+        return jsonify(build_response(direction, tx_id, truck, weight, truck_tara, neto)), 200 # Changed to 201 for creation ideally, but keeping 200 per your code
 
     except Exception as e:
         print("!!! Error in POST /weight !!!")

@@ -38,10 +38,10 @@ def get_weight():
     conn = get_db()
     
     format_strings = ','.join(['%s'] * len(directions))
-    
+
     sql_query = f"""
-        SELECT id, direction, datetime, bruto_kg, neto_kg, produce, 
-               containers, session_id, truck_id, truck_tara_kg
+        SELECT id, direction, datetime, bruto, neto, produce, 
+               containers, session_id, truck, truckTara
         FROM transactions
         WHERE datetime >= %s 
           AND datetime <= %s 
@@ -66,13 +66,13 @@ def get_weight():
                     "id": row['id'],
                     "direction": row['direction'],
                     "datetime": row['datetime'].strftime("%Y-%m-%d %H:%M:%S"),
-                    "bruto_kg": row['bruto_kg'],
-                    "neto_kg": row['neto_kg'],
+                    "bruto": row['bruto'],
+                    "neto": row['neto'],
                     "produce": row['produce'],
                     "containers": containers_list,
+                    "truck": row['truck'],
                     "session_id": row['session_id'],
-                    "truck_id": row['truck_id'],
-                    "truck_tara_kg": row['truck_tara_kg']
+                    "truckTara": row['truckTara']
                 })
                 
     except Exception as e:
