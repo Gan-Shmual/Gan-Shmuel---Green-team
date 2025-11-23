@@ -2,6 +2,8 @@ Weight Tracker Service API
 
 This service manages the weighing of trucks and containers. It tracks sessions, handles tare weights (tara), and provides historical data for transactions.
 
+<img width="1684" height="1105" alt="image" src="https://github.com/user-attachments/assets/ed467c0a-6da2-4c0e-8375-ae749a638666" />
+
 Base URL
 
 http://localhost:5000
