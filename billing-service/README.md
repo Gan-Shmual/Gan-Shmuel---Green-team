@@ -25,8 +25,28 @@ Core responsibilities:
    - Generate accurate invoices using Weight data
    - Track payment history
   
-Billing Team:
+## Billing APIs:
+
 
 ✅ GET /health
+
 ✅ POST /provider
+
 ✅ PUT /provider/<id>
+
+✅ POST /truck
+
+✅ PUT /truck/<id>
+
+✅ GET /truck/<id>
+
+✅ POST /rates
+
+✅ GET /rates
+
+✅ GET /bill
+
+
+### Dependencies:
+
+GET /truck/<id> and GET /bill depend on weight-service

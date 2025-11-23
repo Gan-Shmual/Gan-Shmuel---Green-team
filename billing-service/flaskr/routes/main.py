@@ -4,10 +4,12 @@ from flaskr.models.biling import Provider
 
 bp = Blueprint('main', __name__)
 
+#General
 @bp.route('/health')
 def health():
-    return "ok";
+    return "ok"
 
+#Providers
 @bp.post('/provider')
 def create_provider():
     data = request.get_json()
@@ -33,3 +35,4 @@ def update_provider(provider_id):
         return jsonify({'error': 'Provider not found'}), 404
     provider.name = new_name
     db.session.commit()
+
