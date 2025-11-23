@@ -1,0 +1,27 @@
+
+services:
+  billing-service:
+    build: ./billing-service
+    container_name: billing-service-prod
+    ports:
+      - "8001:8000"
+    environment:
+      - ENV=production
+    restart: unless-stopped
+    networks:
+      - prod-network
+    
+  weight-service:
+    build: ./weight-service
+    container_name: weight-service-prod
+    ports:
+      - "8002:8000"
+    environment:
+      - ENV=production
+    restart: unless-stopped
+    networks:
+      - prod-network
+
+networks:
+  prod-network:
+    driver: bridge
