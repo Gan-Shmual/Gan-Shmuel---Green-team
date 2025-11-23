@@ -1,8 +1,8 @@
 import os
-from flaskr.routes import main
-from flaskr.routes import trucks
+from flaskr.routes import main, trucks, bill
 from flask import Flask
 from flaskr.db import db, init_db
+from flaskr.wights import init_wights
 
 
 def create_app(test_config=None):
@@ -27,6 +27,7 @@ def create_app(test_config=None):
 
     # Initialize database
     init_db(app)
+    init_wights(app)
 
     with app.app_context():
         db.create_all()
@@ -34,5 +35,6 @@ def create_app(test_config=None):
     # register blueprints
     app.register_blueprint(main.bp)
     app.register_blueprint(trucks.trucks)
+    app.register_blueprint(bill.bill)
 
     return app
