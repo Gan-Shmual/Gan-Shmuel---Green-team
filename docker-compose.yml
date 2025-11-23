@@ -7,8 +7,8 @@ services:
     environment:
       # These environment variables are passed to your app inside the container
       - DB_HOST=weight-db
-      - DB_USER=weight_user
-      - DB_PASSWORD=password
+      - DB_USER=WeightGet
+      - DB_PASSWORD=Pass
       - DB_NAME=weight
     depends_on:
       weight-db:
@@ -20,8 +20,8 @@ services:
     - 5001:5000
     environment:
       - DB_HOST=weight-db
-      - DB_USER=weight_user
-      - DB_PASSWORD=password
+      - DB_USER=WeightGet
+      - DB_PASSWORD=Pass
       - DB_NAME=weight
     depends_on:
       weight-db:
