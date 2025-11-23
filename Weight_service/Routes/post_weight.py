@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from db import get_db
+from Weight_service.db import get_db
 import traceback
 
 post_weight_bp = Blueprint("post_weight", __name__)

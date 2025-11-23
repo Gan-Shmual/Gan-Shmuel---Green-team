@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from db import get_db
+from Weight_service.db import get_db
 from datetime import datetime
 
 get_weight_bp = Blueprint("get_weight", __name__)

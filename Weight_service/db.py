@@ -1,5 +1,5 @@
 import pymysql
-import config
+import Weight_service.config as config
 
 def get_db():
     return pymysql.connect(
