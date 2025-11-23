@@ -1,5 +1,5 @@
 from flask import Blueprint, Response
-from Weight_service.db import get_db
+from db import get_db
 import traceback
 
 get_health_bp = Blueprint("get_health", __name__)
