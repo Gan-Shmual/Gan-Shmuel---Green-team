@@ -10,7 +10,7 @@ trucks = Blueprint('trucks', __name__)
 def create_truck():
     data = request.get_json()
     truck_id = data.get('id')
-    provider_id = data.get('provider_id')
+    provider_id = data.get('provider')
     
     # Check validity
     if not truck_id:
