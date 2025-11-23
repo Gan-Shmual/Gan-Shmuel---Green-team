@@ -13,7 +13,7 @@ rates = Blueprint('rates', __name__)
 @rates.post('/rates')
 def upload_rates():
     data = request.get_json()
-    filename =data.filename
+    filename = data.get("filename")
     path = os.path.join(IN_FOLDER, filename)
 
     if not os.path.exists(path):
@@ -21,8 +21,9 @@ def upload_rates():
 
     df = pd.read_excel(path)
     # drop if there are NA in product id or rate; fill with All if provider is missing 
-    df = df[['product_id', 'rate']].dropna(how='any')
     df['MyColumn'].fillna('ALL', inplace=True)
+    df = df.dropna(how='any')
+    
 
     # convert to list-of-dicts suitable for bulk insert
     mappings = df.to_dict(orient='records')
