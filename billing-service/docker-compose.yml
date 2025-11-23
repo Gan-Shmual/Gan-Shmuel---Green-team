@@ -14,7 +14,7 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_PORT=${DB_PORT}
     volumes:
-      - ./data/init/in:/app/in
+      - ./data/in:/app/in
 
   # Service 2: The MySQL Database
   db:
