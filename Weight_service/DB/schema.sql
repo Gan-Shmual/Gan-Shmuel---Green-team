@@ -7,37 +7,31 @@ CREATE DATABASE weight;
 USE weight;
 
 -- Table to store registered containers and their tara weight
-CREATE TABLE containers (
-    id VARCHAR(255) PRIMARY KEY,
-    weight INT,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+CREATE TABLE IF NOT EXISTS `containers_registered` (
+    `container_id` varchar(15) NOT NULL,
+    `weight` int(12) DEFAULT NULL,
+    `unit` varchar(10) DEFAULT NULL,
+    PRIMARY KEY (`container_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=10001 ;
 
 -- Create the table with the CORRECT column names
-CREATE TABLE IF NOT EXISTS transactions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    datetime DATETIME,
-    direction VARCHAR(10),
-    truck VARCHAR(50),
-    containers VARCHAR(10000),
-    bruto INT(12),
-    truckTara INT(12),
-    neto INT(12),
-    produce VARCHAR(50),
-    session_id INT(12)
-);
+CREATE TABLE IF NOT EXISTS `transactions` (
+    `id` int(12) NOT NULL AUTO_INCREMENT,
+    `datetime` datetime DEFAULT NULL,
+    `direction` varchar(10) DEFAULT NULL,
+    `truck` varchar(50) DEFAULT NULL,
+    `containers` varchar(10000) DEFAULT NULL,
+    `bruto` int(12) DEFAULT NULL,
+    `truckTara` int(12) DEFAULT NULL,
+    --   "neto": <int> or "na" // na if some of containers unknown
+    `neto` int(12) DEFAULT NULL,
+    `produce` varchar(50) DEFAULT NULL,
+    `session_id` INT(12) DEFAULT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=10001 ;
 
 
--- A linking table to handle the many-to-many relationship
--- between transactions and containers. This is more robust
--- than a comma-separated list.
-CREATE TABLE transaction_containers (
-    transaction_id INT,
-    container_id VARCHAR(255),
-    PRIMARY KEY (transaction_id, container_id),
-    FOREIGN KEY (transaction_id) REFERENCES transactions(id),
-    FOREIGN KEY (container_id) REFERENCES containers(id)
-);
+
 
 -- Insert Data (Updated to match the new column names)
 INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce, session_id) 

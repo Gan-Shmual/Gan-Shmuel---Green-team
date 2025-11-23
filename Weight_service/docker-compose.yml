@@ -4,23 +4,15 @@ services:
     build: .
     ports:
       - "5000:5000"
-    environment:
-      # These environment variables are passed to your app inside the container
-      - DB_HOST=weight-db
-      - DB_USER=weight_user
-      - DB_PASSWORD=weight_pass
-      - DB_NAME=weight
+    env_file:
+      - .env
     depends_on:
       weight-db:
         condition: service_healthy # Waits for the DB to be ready  # The MySQL database service
   weight-db:
     image: mysql:8.0
-    environment:
-      # These variables configure the MySQL container on its first run
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=weight
-      - MYSQL_USER=weight_user
-      - MYSQL_PASSWORD=weight_pass
+    env_file:
+      - .env
     volumes:
       # This is the magic part: it automatically runs your schema.sql file
       # when the database container starts for the first time.
