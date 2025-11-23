@@ -12,6 +12,8 @@ RUN pip install -r requirements.txt
 
 COPY ci_service.py .
 COPY ci_pipeline.sh .
+COPY send_email.py .
+COPY github_api.py .
 
 RUN chmod +x ci_pipeline.sh
 

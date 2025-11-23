@@ -13,6 +13,9 @@ services:
     environment:
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - TEAM_EMAILS=${TEAM_EMAILS}
     volumes:
       # Allow CI container to run Docker commands on the host
       - /var/run/docker.sock:/var/run/docker.sock
