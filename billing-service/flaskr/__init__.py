@@ -3,14 +3,16 @@ from flaskr.routes import main
 from flaskr.routes import trucks
 from flask import Flask
 from flaskr.db import db, init_db
+from dotenv import load_dotenv
 
 
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     
-    # Load settings from instance/settings.py
-    app.config.from_pyfile('settings.py')
+    # Load settings from .env file
+    load_dotenv()
+    app.config.from_prefixed_env()
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
