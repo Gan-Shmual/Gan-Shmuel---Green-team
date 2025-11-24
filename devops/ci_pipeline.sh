@@ -18,6 +18,11 @@ send_notification() {
   python3 /app/send_email.py "CI Pipeline $status" "$message" "$status"
 }
 
+if [ -z "$GITHUB_TOKEN" ]; then
+  log "ERROR: GITHUB_TOKEN is not set"
+  exit 1
+fi
+
 log "using workspace : $WORKDIR"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
@@ -111,7 +116,13 @@ else
   exit 1
 fi
 
+log "Move to local 'main' branch after merge..."
+git fetch origin
+git checkout main
+git pull origin main
+
 COMMIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
+log "Will deploy commit: $COMMIT_SHA on branch 'main"
 
 #deploy to production
 log "Deploying to production..."
