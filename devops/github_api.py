@@ -7,7 +7,7 @@ if not GITHUB_TOKEN:
     print("Error: GITHUB_TOKEN is not set")
     sys.exit(1)
 REPO_OWNER = "Gan-Shmual"
-REPO_NAME = "Gan-shmuel---Green-team"
+REPO_NAME = "Gan-Shmuel---Green-team"
 API_BASE = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
 
 HEADERS = {

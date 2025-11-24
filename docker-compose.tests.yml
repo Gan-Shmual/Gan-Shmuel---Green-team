@@ -3,7 +3,7 @@ services:
     build: ./billing-service
     container_name: billing-service-test
     ports:
-      - "9001:8000"
+      - "8088:8000"
     environment:
       - ENV=test
     networks:
@@ -13,7 +13,7 @@ services:
     build: ./weight-service
     container_name: weight-service-test
     ports:
-      - "9002:8000"
+      - "8089:8000"
     environment:
       - ENV=test
     networks:

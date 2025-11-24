@@ -68,7 +68,7 @@ Status: Tests failed
 Last 100 lines of logs: 
 $TEST_LOGS
 
-Test environment is still running on ports 9001-9002 for debugging."
+Test environment is still running on ports 8088-8089 for debugging."
 
   exit 1
 fi

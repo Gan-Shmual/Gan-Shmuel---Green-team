@@ -27,13 +27,13 @@ def health():
 def webhook():
     signature = request.headers.get("X-Hub-Signature-256")
     if not verify_signature(request.get_data(), signature):
-        return jsonify({"error: Invalid signature"}), 403
+        return jsonify({"error": "Invalid signature"}), 403
     
     event = request.headers.get("X-GitHub-Event")
-    print(f"[CI] Recevied event: {event}")
+    print(f"[CI] Received event: {event}")
 
     if event != "push":
-        return jsonify({"status": "ignored", "reason": f"Event type: {event}"}, 200)
+        return jsonify({"status": "ignored", "reason": f"Event type: {event}"}), 200
     
     payload = request.get_json()
 
