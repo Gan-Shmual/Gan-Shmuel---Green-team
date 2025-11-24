@@ -66,9 +66,7 @@ Time: $(date)
 Status: Tests failed
 
 Last 100 lines of logs: 
-$TEST_LOGS
-
-Test environment is still running on ports 8088-8089 for debugging."
+$TEST_LOGS"
 
   exit 1
 fi
@@ -117,3 +115,12 @@ Status: All tests passed
 Deployment: Production environment updated"
 
 log "CI/CD pipeline completed successfully!"
+
+COMMIT_SHA=$(git rev-parse HEAD)
+echo "$COMMIT_SHA" > /workspace/current_deployment.txt
+
+if [ -f /workspace/previous_deployment.txt ]; then
+    rm -f /workspace/previous_deployment.txt.old
+    mv /workspace/previous_deployment.txt /workspace/previous_deployment.txt.old
+fi
+mv /workspace/current_deployment.txt /workspace/previous_deployment.txt
