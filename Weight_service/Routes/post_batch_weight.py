@@ -21,7 +21,7 @@ def convert_unit(value, unit):
 ###############################################
 # UPDATE/INSERT CONTAINER WEIGHT
 ###############################################
-def upsert_container(container_id, weight_kg, unit="kg"):
+def upsert_container(container_id, weight, unit):
     conn = get_db()
     with conn.cursor() as cur:
         sql = """
@@ -31,7 +31,7 @@ def upsert_container(container_id, weight_kg, unit="kg"):
                 weight = VALUES(weight),
                 unit = VALUES(unit);
         """
-        cur.execute(sql, (container_id, weight_kg, unit))
+        cur.execute(sql, (container_id, weight, unit))
     conn.commit()
 
 ###############################################
@@ -55,10 +55,21 @@ def process_csv(filepath):
                     continue
 
                 container_id = row[0].strip()
-                weight_val = float(row[1].strip())
-                unit = row[2].strip().lower() if len(row) > 2 else "kg"
+                raw_weight = row[1].strip()
 
-                upsert_container(container_id, weight_val, unit)
+                # --- Handle NULL weights ---
+                if raw_weight.lower() in ["null", "", "none", "na"]:
+                    upsert_container(container_id, None, None)
+                    processed += 1
+                    errors.append(f"CSV row {row}: weight is NULL, inserted as NULL")
+                    continue
+
+                # Valid weight
+                weight_val = float(raw_weight)
+                unit = row[2].strip().lower() if len(row) > 2 else "kg"
+                weight_kg = convert_unit(weight_val, unit)
+
+                upsert_container(container_id, weight_kg, "kg")
                 processed += 1
 
             except Exception as e:
@@ -82,13 +93,21 @@ def process_json(filepath):
     for obj in items:
         try:
             container_id = obj["id"]
-            weight_val = float(obj["weight"])
-            unit = obj.get("unit", "kg").lower()
-            
-            # Convert to KG
+            raw_weight = obj.get("weight", None)
+            raw_unit = obj.get("unit", None)
+
+            # --- NULL weight handling ---
+            if raw_weight in [None, "null", "", "None", "NA"]:
+                upsert_container(container_id, None, None)
+                processed += 1
+                errors.append(f"JSON object {obj}: weight is NULL, inserted as NULL")
+                continue
+
+            # Normal case
+            weight_val = float(raw_weight)
+            unit = raw_unit.lower() if raw_unit else "kg"
             weight_kg = convert_unit(weight_val, unit)
 
-            # Store in DATABASE always as kg
             upsert_container(container_id, weight_kg, "kg")
             processed += 1
 

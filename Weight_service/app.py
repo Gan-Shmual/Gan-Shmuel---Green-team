@@ -8,6 +8,7 @@ from Routes.post_batch_weight import post_batch_bp
 from Routes.get_unknown import get_unknown_bp
 
 app = Flask(__name__)
+app.json.sort_keys = False
 
 app.register_blueprint(get_health_bp) 
 app.register_blueprint(get_weight_bp)
