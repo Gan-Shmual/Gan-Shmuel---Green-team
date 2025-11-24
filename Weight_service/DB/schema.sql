@@ -51,10 +51,3 @@ VALUES (NOW(), 'out', 'T-123', 'CNT-100', 5000, 5000, 0, 'na', 1003);
 
 INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce, session_id) 
 VALUES (NOW(), 'in', 'T-999', 'CNT-555''CNT-101', 30000, 12000, 18000, 'Tomatoes', 1004);
-
-
-INSERT INTO `containers_registered` (`container_id`, `weight`, `unit`) VALUES
-('CNT-100', 500, 'kg'),
-('CNT-101', 600, 'kg'),
-('CNT-202', 600, 'kg'),
-('CNT-555', 450, 'kg');

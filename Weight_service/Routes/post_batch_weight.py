@@ -84,7 +84,7 @@ def process_json(filepath):
             container_id = obj["id"]
             weight_val = float(obj["weight"])
             unit = obj.get("unit", "kg").lower()
-
+            
             # Convert to KG
             weight_kg = convert_unit(weight_val, unit)
 
