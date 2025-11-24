@@ -5,7 +5,7 @@ import traceback
 post_weight_bp = Blueprint("post_weight", __name__)
 
 ###############################################
-# VALIDATION UTILITIES (Unchanged)
+# VALIDATION UTILITIES
 ###############################################
 def validate_required_fields(data):
     required = ["direction", "truck", "containers", "weight", "unit", "force", "produce"]
@@ -34,7 +34,7 @@ def normalize_input(data):
     return direction, truck, produce, unit
 
 ###############################################
-# WEIGHT UTILITIES (Unchanged)
+# WEIGHT UTILITIES
 ###############################################
 def convert_to_kg(weight, unit):
     return weight if unit == "kg" else int(round(weight * 0.453592))
@@ -44,7 +44,6 @@ def convert_to_kg(weight, unit):
 ###############################################
 def get_last_weigh(truck):
     conn = get_db()
-    # We select specific columns to map them to a dictionary manually
     sql = """
         SELECT id, direction, session_id, bruto, datetime
         FROM transactions
@@ -57,16 +56,15 @@ def get_last_weigh(truck):
         cur.execute(sql, (truck,))
         row = cur.fetchone()
         
-        # Helper: Convert Tuple to Dict so the rest of your logic works
-        # tuple index: 0=id, 1=direction, 2=session_id, 3=bruto, 4=datetime
         if row:
             return {
-                "id": row[0],
-                "direction": row[1],
-                "session_id": row[2],
-                "bruto": row[3],
-                "datetime": row[4]
+                "id": row["id"],
+                "direction": row["direction"],
+                "session_id": row["session_id"],
+                "bruto": row["bruto"],
+                "datetime": row["datetime"]
             }
+
     return None
 
 def update_session_id(transaction_id, session_id):
@@ -76,7 +74,7 @@ def update_session_id(transaction_id, session_id):
     conn.commit()
 
 ###############################################
-# DIRECTION RULE ENGINE (Unchanged)
+# DIRECTION RULE ENGINE
 ###############################################
 def validate_direction_rules(direction, last_weigh, force):
     if last_weigh is None:
@@ -96,7 +94,7 @@ def validate_direction_rules(direction, last_weigh, force):
     return None
 
 ###############################################
-# SESSION HANDLING (Unchanged)
+# SESSION HANDLING
 ###############################################
 def resolve_session_id(direction, last_weigh):
     if direction in ["in", "none"]:
@@ -134,8 +132,6 @@ def save_transaction(direction, truck, containers, bruto, produce, session_id, l
 
     if direction in ["in", "none"]:
         update_session_id(new_id, new_id)
-        # Note: session_id update logic handled in wrapper, 
-        # but we return new_id so the main function can update local var
     
     return new_id
 
@@ -155,34 +151,40 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out):
             ORDER BY datetime DESC LIMIT 1;
         """, (session_id,))
         
-        prev = cur.fetchone() # returns tuple (bruto,)
-        truck_tara = prev[0] if prev else None
+        prev = cur.fetchone()  # returns dict: {"bruto": int}
+        truck_tara = prev["bruto"] if prev else None
 
         # 2. Container Taras
         unknown = False
         tara_sum = 0
         
-        # Loop through container IDs
         for cid in containers:
-            cur.execute("SELECT weight FROM containers WHERE id=%s", (cid,))
-            row = cur.fetchone() # returns tuple (weight,)
+            cur.execute("SELECT weight FROM containers_registered WHERE container_id=%s", (cid,))
+            row = cur.fetchone()  # dict: {"weight": int}
+
             if row is None:
                 unknown = True
             else:
-                tara_sum += row[0]
+                tara_sum += row["weight"]
 
-        neto = None if unknown or truck_tara is None else bruto_out - truck_tara - tara_sum
+        # 3. Calculate neto
+        if unknown or truck_tara is None:
+            neto = None
+        else:
+            neto = bruto_out - truck_tara - tara_sum
 
-        # 3. Update OUT row
+        # 4. Update OUT transaction
         cur.execute("""
-            UPDATE transactions SET truckTara=%s, neto=%s WHERE id=%s;
+            UPDATE transactions SET truckTara=%s, neto=%s
+            WHERE id=%s;
         """, (truck_tara, neto, transaction_id))
     
     conn.commit()
     return truck_tara, neto
 
+
 ###############################################
-# JSON RESPONSE BUILDER (Unchanged)
+# JSON RESPONSE BUILDER
 ###############################################
 def build_response(direction, transaction_id, truck, bruto, truck_tara, neto):
     resp = {
@@ -258,7 +260,7 @@ def post_weight():
             truck_tara, neto = calculate_out_values(tx_id, session_id, containers, weight)
 
         # response
-        return jsonify(build_response(direction, tx_id, truck, weight, truck_tara, neto)), 200 # Changed to 201 for creation ideally, but keeping 200 per your code
+        return jsonify(build_response(direction, tx_id, truck, weight, truck_tara, neto)), 200
 
     except Exception as e:
         print("!!! Error in POST /weight !!!")
