@@ -1,18 +1,16 @@
 import pytest
-from unittest.mock import MagicMock
-import importlib
-import os
-
-# Make sure we can import your app
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 import sys
-sys.path.insert(0, PROJECT_ROOT)
+import os
+from unittest.mock import MagicMock
+
+# 1. Add the parent directory (Weight_service) to sys.path
+# This ensures we can import 'app' and 'db' correctly
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+
+from app import app as flask_app
 
 @pytest.fixture
 def app():
-    # Import the Flask app from your package
-    # Adjust import path to match your project: Weight_service.app
-    from app import app as flask_app
     flask_app.config.update({
         "TESTING": True,
     })
@@ -23,44 +21,24 @@ def client(app):
     return app.test_client()
 
 @pytest.fixture
-def fake_db_cursor():
-    """A small factory for fake cursors"""
-    class Cursor:
-        def __init__(self, rows=None):
-            self._rows = rows or []
-            self._idx = 0
-        def execute(self, *_args, **_kwargs):
-            pass
-        def fetchone(self):
-            if not self._rows:
-                return None
-            return self._rows[0]
-        def fetchall(self):
-            return self._rows
-        def __enter__(self):
-            return self
-        def __exit__(self, exc_type, exc, tb):
-            pass
+def mock_db(monkeypatch):
+    import Routes.get_health as health_route  # <--- patch where it is used
 
-    return Cursor
+    def _patch_db(rows=None, side_effect=None):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
 
-@pytest.fixture
-def fake_db_connection(monkeypatch, fake_db_cursor):
-    """Monkeypatch db.get_db to return a connection whose cursor() yields our fake cursor."""
-    import db as db_module
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
 
-    class FakeConn:
-        def __init__(self, rows=None):
-            self._rows = rows
-        def cursor(self):
-            return fake_db_cursor(self._rows)
-        def close(self):
-            pass
+        if side_effect:
+            mock_conn.cursor.side_effect = side_effect
+        else:
+            mock_cursor.fetchone.return_value = rows[0] if rows else None
+            mock_cursor.fetchall.return_value = rows or []
 
-    def _patch(rows=None):
-        def _get_db():
-            return FakeConn(rows)
-        monkeypatch.setattr(db_module, "get_db", _get_db)
-        return _get_db
+        # Patch the function *inside the get_health module*
+        monkeypatch.setattr(health_route, "get_db", lambda: mock_conn)
 
-    return _patch
+        return mock_cursor
+
+    return _patch_db

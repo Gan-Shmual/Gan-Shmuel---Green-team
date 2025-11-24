@@ -9,7 +9,7 @@ def test_session_1001_exists():
     start = time.time()
     while True:
         try:
-            r = requests.get(f"{BASE}/session/1001", timeout=2)
+            r = requests.get(f"{BASE}/session/1", timeout=2)
             break
         except requests.exceptions.ConnectionError:
             if time.time() - start > timeout:
@@ -18,5 +18,5 @@ def test_session_1001_exists():
 
     assert r.status_code == 200
     j = r.json()
-    assert j["id"] == "1001"
+    assert j["id"] == "1"
     assert "bruto" in j
