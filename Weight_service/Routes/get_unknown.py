@@ -1,15 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from db import get_db
-from datetime import datetime
 
 get_unknown_bp = Blueprint("get_unknown", __name__)
 
 @get_unknown_bp.route("/unknown", methods=["GET"])
 def get_unknown():
-
     conn = get_db()
 
-    sql_unknown_weight = "SELECT weight FROM containers_registered WHERE weight IS NULL;"
+    # FIX: Select ALL columns you need, not just 'weight'
+    sql_unknown_weight = "SELECT container_id, weight, unit FROM containers_registered WHERE weight IS NULL;"
 
     unknown_weights = []
     try:
@@ -25,5 +24,5 @@ def get_unknown():
                 })
     except Exception as e:
         return f"Database query failed: {str(e)}", 500
-    return jsonify(unknown_weights), 200
 
+    return jsonify(unknown_weights), 200
