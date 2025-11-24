@@ -15,6 +15,7 @@ services:
       - DB_PORT=${DB_PORT}
       - WEIGHTS_PORT=${WEIGHTS_PORT}
       - APP_PORT=${APP_PORT}
+      - WEIGHTS_HOST=${WEIGHTS_HOST}
     volumes:
       - ./data/in:/app/in
 

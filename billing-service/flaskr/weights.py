@@ -6,7 +6,7 @@ weights_host = None
 def from_weights(endpoint, data):
     response = requests.get(f'http://{weights_host}:{weights_port}/{endpoint}', params=data)
     if response.status_code == 200:
-        return response.json()
+        return response
     else:
         response.raise_for_status()
 
