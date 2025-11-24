@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5000
 
 # Command to run the application
-CMD flask --app flaskr run --debug --host=0.0.0.0 --port=${APP_PORT:-5000}
+CMD ["python", "run.py"]

@@ -8,17 +8,9 @@ docker compose up --build -d || { echo "compose failed"; exit 1; }
 sleep 5
 
 # waiting for mysql
-# -s: silent mode, -f: fail if non-2xx
-until curl -sf http://localhost:5000/health > /dev/null; do
-    echo "Waiting for app to be healthy..."
-    sleep 2
-done
-echo "App is healthy!"
-echo "________________________________"
-
 echo "Waiting for sql (max 60s)..."
 
-for (( i=0; i<60; i+=5 )); do
+for (( i=0; i<12; i+=5 )); do
     if curl -s http://localhost:5000/health > /dev/null; then
         echo "Service is up after $i seconds"
         break
@@ -31,20 +23,22 @@ if [ $i -eq 60 ]; then
     docker compose down -v
     exit 1
 fi
+echo "App is healthy!"
+echo "________________________________"
 
 echo "Adding a provider:" 
 curl -X POST http://localhost:5000/provider -H "Content-Type: application/json" -d '{"name": "Provider1"}' 
 echo "" 
 
 echo "Adding a provider:" 
-curl -X PUT http://localhost:5000/provider/1 -H "Content-Type: application/json" -d '{"name": "Provider1_updated"}' 
-echo "" 
+curl -X POST http://localhost:5000/provider -H "Content-Type: application/json" -d '{"name": "Provider2"}' 
+echo ""
 
 echo "Adding a truck:" 
-curl -X POST http://localhost:5000/truck -H "Content-Type: application/json" -d '{"id": "1234", "provider_id": 1}' 
+curl -X POST http://localhost:5000/truck -H "Content-Type: application/json" -d '{"id": "1234", "provider": 1}' 
 echo ""
 echo "Updating the truck info:" 
-curl -X PUT http://localhost:5000/truck/1234 -H "Content-Type: application/json" -d '{"provider_id": 1}'
+curl -X PUT http://localhost:5000/truck/1234 -H "Content-Type: application/json" -d '{"provider": 2}'
 echo ""
 
 docker compose down -v
