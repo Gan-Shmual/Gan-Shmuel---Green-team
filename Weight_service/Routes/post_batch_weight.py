@@ -129,11 +129,14 @@ def batch_weight():
     filename = data["file"].strip()
     filepath = f"/app/in/{filename}"
 
+    ext = filename.lower().split(".")[-1]
+    # check extnesion
+    if ext not in ["csv", "json"]:
+        return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
+
     if not os.path.isfile(filepath):
         return jsonify({"error": f"File '{filename}' not found in /in"}), 404
-
-    ext = filename.lower().split(".")[-1]
-
+    
     try:
         if ext == "csv":
             processed, errors = process_csv(filepath)
