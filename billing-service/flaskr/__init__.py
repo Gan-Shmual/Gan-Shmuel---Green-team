@@ -2,7 +2,7 @@ import os
 from flaskr.routes import main, trucks, bill, rates, provider
 from flask import Flask
 from flaskr.db import db, init_db
-from flaskr.wights import init_wights
+from flaskr.weights import init_weights
 
 
 def create_app(test_config=None):
@@ -27,7 +27,7 @@ def create_app(test_config=None):
 
     # Initialize database
     init_db(app)
-    init_wights(app)
+    init_weights(app)
 
     with app.app_context():
         db.create_all()
