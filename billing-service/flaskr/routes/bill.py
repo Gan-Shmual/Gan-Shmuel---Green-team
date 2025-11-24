@@ -75,14 +75,14 @@ def get_bill(id):
         weight_data = from_weights('weight', {
             'from': from_time,
             'to': to_time,
-            'filter': 'out'  # Only completed sessions
+            'filter': 'in'  # Only completed sessions
         })
         
         # Filter sessions for this provider's trucks and aggregate by product
         products_dict = {}
         session_count = 0
         
-        for session in weight_data:
+        for session in weight_data.json():
             truck_id = session.get('truck')
             
             # Skip if not this provider's truck

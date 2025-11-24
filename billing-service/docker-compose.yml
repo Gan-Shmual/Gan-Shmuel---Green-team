@@ -28,10 +28,10 @@ services:
       - MYSQL_DATABASE=${BILLING_DB_NAME}
       - MYSQL_TCP_PORT=${BILLING_DB_PORT}
     volumes:
-      - db_data:/var/lib/mysql
+       # db_data:/var/lib/mysql
       - ./data/init:/docker-entrypoint-initdb.d
     ports:
-      - ${DB_PORT}:${DB_PORT}
+      - ${BILLING_DB_PORT}:${BILLING_DB_PORT}
     healthcheck:
       test:
         [
@@ -49,5 +49,5 @@ services:
       retries: 5
 
 # Define volume for persistence
-volumes:
-  db_data:
+#volumes:
+ # db_data:
