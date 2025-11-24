@@ -159,6 +159,26 @@ def get_all_containers_info(containers):
             containers_data.append(container_info)
     return containers_data
 
+def validate_containers(containers):
+    """Validate that all containers exist and have non-NULL weights"""
+    conn = get_db()
+    unknown_containers = []
+    
+    with conn.cursor() as cur:
+        for container_id in containers:
+            cur.execute("""
+                SELECT container_id, weight 
+                FROM containers_registered 
+                WHERE container_id = %s
+            """, (container_id.strip(),))
+            result = cur.fetchone()
+            
+            # If container doesn't exist OR weight is NULL
+            if result is None or result['weight'] is None:
+                unknown_containers.append(container_id.strip())
+    
+    return unknown_containers
+
 ###############################################
 # INSERT + UPDATE
 ###############################################
@@ -220,7 +240,7 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out, truc
             cur.execute("SELECT weight FROM containers_registered WHERE container_id=%s", (cid,))
             row = cur.fetchone()  # dict: {"weight": int}
 
-            if row is None:
+            if row is None or row["weight"] is None:  # Check for NULL weight
                 unknown = True
             else:
                 tara_sum += row["weight"]
@@ -231,7 +251,7 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out, truc
             truck_tara = None  # Store as NULL in database
         
         # Calculate neto
-        if unknown or truck_tara is None:
+        if unknown or truck_tara or tara_sum is None:
             neto = None
         else:
             neto = bruto_out - truck_tara - tara_sum
@@ -297,6 +317,13 @@ def post_weight():
 
     containers = parse_containers(data["containers"])
     weight = convert_to_kg(weight, unit)
+
+    # Validate containers - check for unknown or NULL weight containers
+    unknown_containers = validate_containers(containers)
+    if unknown_containers:
+        return jsonify({
+            "error": f"Unknown containers (or containers with missing weight): {', '.join(unknown_containers)}"
+        }), 400
 
     try:
         # last weigh
