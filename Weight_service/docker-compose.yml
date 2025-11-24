@@ -1,0 +1,27 @@
+services:
+  # Your Flask application service
+  weight-app:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      weight-db:
+        condition: service_healthy # Waits for the DB to be ready  # The MySQL database service
+    volumes:
+      - ./in:/app/in
+  weight-db:
+    image: mysql:8.0
+    env_file:
+      - .env
+    volumes:
+      # This is the magic part: it automatically runs your schema.sql file
+      # when the database container starts for the first time.
+      - ./DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      # Docker will use this command to check if the DB is ready for connections
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
