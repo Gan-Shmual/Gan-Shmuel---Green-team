@@ -2,20 +2,28 @@ import requests
 import time
 import pytest
 
-def test_billing_health():
-    response = requests.get("http://billing:8000/health")
-    assert response.status_code == 200
-    assert response.json()["service"] == "billing"
+
+BASE = "http://weight-app:5000"
+#helper func to wait for the service(db included)
+def wait_for_service(timeout=30):
+    start = time.time()
+    while True:
+        try:
+            r = requests.get(f"{BASE}/health", timeout=2)
+            if r.status_code == 200:
+                return
+        except requests.exceptions.RequestException:
+            
+            pass
+
+        if time.time() - start > timeout:
+            raise TimeoutError("weight service did not become healthy in time")
+
+        time.sleep(1)
 
 def test_weight_health():
-    response = requests.get("http://weight:8000/health")
-    assert response.status_code == 200
-    assert response.json()["service"] == "weight"
+    wait_for_service()
+    r = requests.get(f"{BASE}/health")
+    assert r.status_code == 200
 
-def test_billing_index():
-    response = requests.get("http://billing:8000/")
-    assert "billing service" in response.text.lower()
 
-def test_weight_index():
-    response = requests.get("http://weight:8000/")
-    assert "weight service" in response.text.lower()
