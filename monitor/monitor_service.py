@@ -10,11 +10,11 @@ app = Flask(__name__)
 SERVICES = {
     "billing-service": {
         "url": "http://billing-service-prod:8000/health",
-        "port": 8001
+        "port": 8081
     },
     "weight-service": {
         "url": "http://weight-service-prod:8000/health",
-        "port": 8002
+        "port": 8082
     }
 }
 
@@ -33,9 +33,9 @@ MAX_HISTORY = 100
 #check health of a single service
 def check_service_health(service_name, service_config):
     try:
-        start_time = time.time()
+        start_time = time.monotonic()
         response = requests.get(service_config["url"], timeout=5)
-        response_time = round((time.time() - start_time) * 1000, 2)
+        response_time = round((time.monotonic() - start_time) * 1000, 2)
 
         if response.status_code == 200:
             status = "healthy"
@@ -152,6 +152,29 @@ def api_summary():
         "services": current_status,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
+
+@app.route("/api/rollback", methods=["POST"])
+def rollback():
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["/app/rollback.sh"],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        success = (result.returncode == 0)
+        status_code = 200 if success else 500
+
+        return jsonify({
+            "status": "success" if success else "failed",
+            "output": result.stdout,
+            "error": result.stderr
+        }), status_code
+    
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 if __name__ == "__main__":
     health_thread = threading.Thread(target=background_health_check, daemon=True)

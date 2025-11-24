@@ -70,6 +70,7 @@
         .service-card.down { border-left: 5px solid #ff4444; }
         .service-card.timeout { border-left: 5px solid #ffaa00; }
         .service-card.unknown { border-left: 5px solid #888; }
+        .service-card.error {border-left: 5px solid #ff4444;}
 
         .service-name {
             font-size: 18px;
@@ -133,6 +134,7 @@
         .indicator.down { background: #ff4444; }
         .indicator.timeout { background: #ffaa00; }
         .indicator.unknown { background: #888; }
+        .indicator.error {background: #ff4444;}
 
         @keyframes pulse {
             0% { opacity: 1; }
@@ -152,6 +154,7 @@
         <div class="actions">
             <button onclick="refreshStatus()">Refresh Now</button>
             <button onclick="forceCheck()">Force Health Check</button>
+            <button onclick="rollback()" style="background: #ff4444;">ROLLBACK</button>
         </div>
 
         <div id="services" class="services-grid">
@@ -196,11 +199,12 @@
 
             const statusColorClassMap = {
                 healthy: 'healthy',
-                degraded: 'degraded',
+                unhealthy: 'down',
                 down: 'down',
                 timeout: 'degraded',
+                error: 'error',
                 unknown: 'unknown',
-                unhealthy: 'down'
+                
             };
 
             for (const [name, status] of Object.entries(services)) {
@@ -246,6 +250,26 @@
                 refreshStatus();
             } catch (error) {
                 console.error('Failed to force check:', error);
+            }
+        }
+
+        async function rollback() {
+            if (!confirm('Are you sure you want to rollback to the previous version?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/rollback', {method: 'POST'});
+                const data = await response.json();
+                if (!response.ok || data.status !== 'success'){
+                    alert('Rollback failed: ' + (data.error || 'Unknown error'));
+                } else {
+                    alert('Rollback complete!');
+                }
+                refreshStatus();
+
+            }  catch (error) {
+                alert('Rollback failed: ' + error);
             }
         }
 
