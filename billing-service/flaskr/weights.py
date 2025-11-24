@@ -11,7 +11,7 @@ def from_weights(endpoint, data):
 
 def init_weights(app):
     global weights_port
-    weights_port = app.config['WIGHT_PORT'] = app.config.get('WIGHT_PORT')
+    weights_port = app.config['WEIGHTS_PORT'] = app.config.get('WEIGHTS_PORT')
     try:
         status = from_weights('health', {})
         print(f'weights service is up: {status}')
