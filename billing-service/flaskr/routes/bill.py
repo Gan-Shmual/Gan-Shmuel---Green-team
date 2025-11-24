@@ -75,7 +75,7 @@ def get_bill(id):
         weight_data = from_weights('weight', {
             'from': from_time,
             'to': to_time,
-            'filter': 'in'  # Only completed sessions
+            'filter': 'out'  # Only completed sessions
         })
         
         # Filter sessions for this provider's trucks and aggregate by product
@@ -115,7 +115,9 @@ def get_bill(id):
         total_pay = 0
         
         for product, data in products_dict.items():
-            rate = get_rate_for_product(product, provider.id)
+            rate = get_rate_for_product(product, provider.id) 
+            print(f"rate: {rate}", flush=True)
+            print(data['amount'], flush=True)
             pay = data['amount'] * rate
             total_pay += pay
             
