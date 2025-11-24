@@ -30,6 +30,7 @@ fi
 if [ -d "$REPO_DIR/weight-service/tests" ]; then
     log "Starting weight unit tests..."
     (
+        set +e
         cd "$REPO_DIR/weight-service"
         pytest tests/ -v > /tmp/weight_test_output.log 2>&1
         echo $? > /tmp/weight_test_result
@@ -43,10 +44,10 @@ fi
 
 #wait for both to complete
 if [ -n "$BILLING_PID" ]; then
-    wait $BILLING_PID
+    wait "$BILLING_PID"
 fi
 if [ -n "$WEIGHT_PID" ]; then
-    wait $WEIGHT_PID
+    wait "$WEIGHT_PID"
 fi
 
 #check results

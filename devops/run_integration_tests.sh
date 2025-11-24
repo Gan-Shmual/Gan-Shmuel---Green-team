@@ -1,4 +1,4 @@
-#!usr/bin/env bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -6,7 +6,7 @@ REPO_DIR=${1:-/workspace/Gan-Shmuel---Green-team}
 COMPOSE_FILE=${2:-docker-compose.tests.yml}
 
 log () {
-    echo "[INTEGRATION-TESTS $(date '+%Y-%m-%d %h:%m:%S')] $1"
+    echo "[INTEGRATION-TESTS $(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 log "Building test environment..."
@@ -18,7 +18,7 @@ cd "$REPO_DIR"
 
 docker compose -f "$COMPOSE_FILE" up -d --build
 
-log "Test environment build successfully"
+log "Test environment built successfully"
 
 log "Waiting for services to start..."
 sleep 10
@@ -28,7 +28,7 @@ if docker compose -f "$COMPOSE_FILE" run --rm test-runner; then
     log "All integration tests passed!"
     exit 0
 else
-    log "Integarion tests failed"
+    log "Integraion tests failed"
 
     TEST_LOGS=$(docker compose -f "$COMPOSE_FILE" logs test-runner 2>&1 | tail -100)
 
