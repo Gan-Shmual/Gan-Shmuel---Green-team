@@ -3,9 +3,9 @@ from flaskr.db import db
 import pandas as pd
 from flaskr.models.biling import Rate
 import os
-from sqlalchemy import delete
+from sqlalchemy import text
 
-IN_FOLDER = "/app/data/in"
+IN_FOLDER = "/app/in"
 LATEST = os.path.join(IN_FOLDER, "latest_rates.xlsx")
 
 rates = Blueprint('rates', __name__)
@@ -20,8 +20,17 @@ def upload_rates():
         return jsonify({"error": f"File '{filename}' not found in /in"}), 404
 
     df = pd.read_excel(path)
+    df_latest = df.copy()
+    df = df.rename(columns={
+    "Product": "product_id",
+    "PRODUCT": "product_id",
+    "Rate": "rate",
+    "RATE": "rate",
+    "Scope": "scope",
+    "SCOPE": "scope"
+})
     # drop if there are NA in product id or rate; fill with All if provider is missing 
-    df['MyColumn'].fillna('ALL', inplace=True)
+    df['scope'].fillna('All', inplace=True)
     df = df.dropna(how='any')
     
 
@@ -29,7 +38,9 @@ def upload_rates():
     mappings = df.to_dict(orient='records')
 
     try:
-        db.session.execute(delete(Rate))
+        # TRUNCATE to clear the table and reset the AUTO_INCREMENT counter
+        db.session.execute(text('TRUNCATE TABLE Rates'))
+        
         # bulk insert 
         if mappings:
             db.session.bulk_insert_mappings(Rate, mappings)
@@ -39,7 +50,7 @@ def upload_rates():
         raise
 
     #save the rates as rates_latest
-    df.to_excel(LATEST, index=False)
+    df_latest.to_excel(LATEST, index=False)
     
     return jsonify({"message": f"Loaded {filename}", "stored_as": "latest_rates.xlsx"}), 200
 
