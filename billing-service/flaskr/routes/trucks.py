@@ -59,10 +59,10 @@ def get_truck(truck_id):
     t1 = request.args.get('from')
     t2 = request.args.get('to')
 
-    response = requests.get(
-        f"http://{base_path}/item/{truck_id}",
-        params={"from": t1, "to": t2}
-    )
+    response = from_weights('truck', {
+            'from': t1,
+            'to': t2})
+    
     if not response.ok:
         return jsonify({"error": "Truck not found"}), response.status_code
 
