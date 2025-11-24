@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  devops-ci:
+    build: ./devops
+    container_name: devops-ci
+    ports:
+      - "8080:8000"
+      #for testing internally (curl for health for now,well can change them later)
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
+
+    environment:
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - TEAM_EMAILS=${TEAM_EMAILS}
+    volumes:
+      # Allow CI container to run Docker commands on the host
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Workspace where we clone + build the repo
+      - ./ci-workspace:/workspace
