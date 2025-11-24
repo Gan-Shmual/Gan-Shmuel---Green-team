@@ -5,7 +5,7 @@ set -e
 echo "[ROLLBACK] Starting rollback..."
 
 REPO_DIR="/workspace/Gan-Shmuel---Green-team"
-PREV_FILE="/workspace/previous_deployment.txt.old"
+PREV_FILE="/workspace/previous_deployment.txt"
 
 cd "$REPO_DIR"
 
