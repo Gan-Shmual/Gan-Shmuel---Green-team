@@ -8,11 +8,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_PORT=${DB_PORT}
+      - DB_HOST=${BILLING_DB_HOST}
+      - DB_USER=${BILLING_DB_USER}
+      - DB_PASSWORD=${BILLING_DB_PASSWORD}
+      - DB_NAME=${BILLING_DB_NAME}
+      - DB_PORT=${BILLING_DB_PORT}
       - WEIGHTS_PORT=${WEIGHTS_PORT}
       - APP_PORT=${APP_PORT}
       - WEIGHTS_HOST=${WEIGHTS_HOST}
@@ -24,9 +24,9 @@ services:
     image: mysql:8.0
     restart: always
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_TCP_PORT=${DB_PORT}
+      - MYSQL_ROOT_PASSWORD=${BILLING_DB_PASSWORD}
+      - MYSQL_DATABASE=${BILLING_DB_NAME}
+      - MYSQL_TCP_PORT=${BILLING_DB_PORT}
     volumes:
       - db_data:/var/lib/mysql
       - ./data/init:/docker-entrypoint-initdb.d
