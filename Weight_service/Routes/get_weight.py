@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from  db import get_db
+from db import get_db
 from datetime import datetime
 
 get_weight_bp = Blueprint("get_weight", __name__)
@@ -64,15 +64,15 @@ def get_weight():
 
                 results.append({
                     "id": row['id'],
-                    "direction": row['direction'],
                     "datetime": row['datetime'].strftime("%Y-%m-%d %H:%M:%S"),
+                    "direction": row['direction'],
+                    "truck": row['truck'],
+                    "containers": containers_list,
                     "bruto": row['bruto'],
+                    "truckTara": row['truckTara'],
                     "neto": row['neto'],
                     "produce": row['produce'],
-                    "containers": containers_list,
-                    "truck": row['truck'],
                     "session_id": row['session_id'],
-                    "truckTara": row['truckTara']
                 })
                 
     except Exception as e:
