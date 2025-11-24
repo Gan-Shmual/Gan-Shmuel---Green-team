@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flaskr.db import db
 from flaskr.models.biling import Provider, Truck
-import requests
+from flaskr.weights import from_weights
 
 base_path="localhost:5000"
 trucks = Blueprint('trucks', __name__)
@@ -42,9 +42,9 @@ def update_truck(id):
         return jsonify({'error': 'Truck not found'}), 404
     
     data = request.get_json()
-    provider_id = data.get('provider_id')
+    provider_id = data.get('provider')
     if not provider_id:
-        return jsonify({'error': 'provider_id is required'}), 400
+        return jsonify({'error': 'provider id is required'}), 400
     provider = db.session.get(Provider, provider_id)
     if provider is None:
         return jsonify({'error': 'Provider does not exist'}), 400
@@ -59,7 +59,7 @@ def get_truck(truck_id):
     t1 = request.args.get('from')
     t2 = request.args.get('to')
 
-    response = from_weights('truck', {
+    response = from_weights(f'item{truck_id}', {
             'from': t1,
             'to': t2})
     
