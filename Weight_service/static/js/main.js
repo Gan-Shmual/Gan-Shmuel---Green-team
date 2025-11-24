@@ -1,5 +1,3 @@
-// Main JavaScript file for Weight Service UI
-
 // Notification system
 function showNotification(title, message, type = "success") {
   const notification = document.getElementById("notification");
