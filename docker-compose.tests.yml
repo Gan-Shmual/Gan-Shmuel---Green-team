@@ -1,6 +1,6 @@
 include:
   - ./Weight_service/docker-compose.yml
-#  - ./Billing-service/docker-compose.yml
+  - ./billing-service/docker-compose.yml
 services:
   test-runner:
     build: ./tests
@@ -8,8 +8,8 @@ services:
     depends_on:
     - weight-app
     - weight-db
-    # - billing-app
-    # - billing-db
+    - billing-service
+    - db #billing db name
 
   
     volumes:
