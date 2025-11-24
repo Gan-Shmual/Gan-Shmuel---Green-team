@@ -1,0 +1,243 @@
+{% extends "layout.html" %} {% block title %}Weight History - Weight Service{%
+endblock %} {% block content %}
+<div class="max-w-6xl mx-auto">
+  <!-- Filter Controls -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">Transaction History</h2>
+      <button
+        onclick="loadHistory()"
+        class="text-primary hover:text-blue-700 text-sm font-medium"
+      >
+        <i class="fas fa-sync-alt mr-1"></i> Refresh
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <!-- Date From -->
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">From</label>
+        <input
+          type="datetime-local"
+          id="dateFrom"
+          class="w-full rounded-lg border-gray-300 border p-2 focus:ring-primary focus:border-primary text-sm"
+        />
+      </div>
+      <!-- Date To -->
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">To</label>
+        <input
+          type="datetime-local"
+          id="dateTo"
+          class="w-full rounded-lg border-gray-300 border p-2 focus:ring-primary focus:border-primary text-sm"
+        />
+      </div>
+      <!-- Direction Filter -->
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1"
+          >Direction</label
+        >
+        <select
+          id="filterDir"
+          class="w-full rounded-lg border-gray-300 border p-2 focus:ring-primary focus:border-primary text-sm bg-white"
+        >
+          <option value="in,out,none">All (In, Out, None)</option>
+          <option value="in">In Only</option>
+          <option value="out">Out Only</option>
+          <option value="none">None Only</option>
+        </select>
+      </div>
+      <!-- Filter Button -->
+      <div>
+        <button
+          onclick="loadHistory()"
+          class="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+        >
+          Apply Filters
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div
+    class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200"
+  >
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              ID
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Dir
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Truck
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Bruto
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Neto
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Produce
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Containers
+            </th>
+          </tr>
+        </thead>
+        <tbody id="historyTable" class="bg-white divide-y divide-gray-200">
+          <!-- Rows will be injected here -->
+        </tbody>
+      </table>
+    </div>
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden p-10 text-center">
+      <div class="text-gray-400 mb-2">
+        <i class="fas fa-clipboard-list text-4xl"></i>
+      </div>
+      <p class="text-gray-500">No transactions found for these filters.</p>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  // Helper to convert HTML datetime-local to YYYYMMDDHHMMSS
+  function toApiDate(isoStr) {
+    if (!isoStr) return "";
+    return isoStr.replace(/[-T:]/g, "") + "00";
+  }
+
+  // Helper to format API date to readable string
+  function formatApiDate(str) {
+    if (!str || str.length < 12) return str;
+    // YYYYMMDDHHMMSS -> YYYY-MM-DD HH:MM
+    return `${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(
+      6,
+      8
+    )} ${str.slice(8, 10)}:${str.slice(10, 12)}`;
+  }
+
+  async function loadHistory() {
+    const t1 = toApiDate(document.getElementById("dateFrom").value);
+    const t2 = toApiDate(document.getElementById("dateTo").value);
+    const filter = document.getElementById("filterDir").value;
+
+    let url = `/api/weight?filter=${filter}`;
+    if (t1) url += `&from=${t1}`;
+    if (t2) url += `&to=${t2}`;
+
+    const tbody = document.getElementById("historyTable");
+    const emptyState = document.getElementById("emptyState");
+
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</td></tr>';
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      tbody.innerHTML = "";
+
+      if (!data || data.length === 0) {
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+
+      data.forEach((row) => {
+        // Determine badge color for direction
+        let dirClass = "bg-gray-100 text-gray-800";
+        if (row.direction === "in") dirClass = "bg-blue-100 text-blue-800";
+        else if (row.direction === "out")
+          dirClass = "bg-green-100 text-green-800";
+
+        // Format containers list
+        const containers = Array.isArray(row.containers)
+          ? row.containers.join(", ")
+          : row.containers;
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50 transition-colors";
+        tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <a href="/session-details?id=${
+                      row.id
+                    }" class="text-primary hover:underline">${row.id}</a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${dirClass}">
+                        ${row.direction.toUpperCase()}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${
+                  row.truck || "na"
+                }</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">${
+                  row.bruto
+                }</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono font-bold">${
+                  row.neto === "na" ? "-" : row.neto
+                }</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${
+                  row.produce || "na"
+                }</td>
+                <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs" title="${containers}">
+                    ${containers || "-"}
+                </td>
+            `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">Error loading data: ${err.message}</td></tr>`;
+    }
+  }
+
+  // Set default dates on load (Today 00:00 to Now)
+  document.addEventListener("DOMContentLoaded", () => {
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    const formatInput = (d) => {
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 16);
+    };
+
+    document.getElementById("dateTo").value = formatInput(now);
+    document.getElementById("dateFrom").value = formatInput(todayStart);
+
+    // Initial Load
+    loadHistory();
+  });
+</script>
+{% endblock %}
