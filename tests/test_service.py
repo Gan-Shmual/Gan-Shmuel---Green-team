@@ -3,7 +3,7 @@ import time
 import pytest
 
 def test_billing_health():
-    response = requests.get("http://biling:8000/health")
+    response = requests.get("http://billing:8000/health")
     assert response.status_code == 200
     assert response.json()["service"] == "billing"
 

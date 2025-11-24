@@ -159,4 +159,4 @@ if __name__ == "__main__":
 
     check_all_services()
 
-    app.run(host="0.0.0.0", port=8005)
+    app.run(host="0.0.0.0", port=8085)
