@@ -1,24 +1,32 @@
 from flask import Flask
-from Routes.get_health import get_health_bp
-from Routes.post_weight import post_weight_bp
-from Routes.get_weight import get_weight_bp
-from Routes.get_session import get_session_bp
-from Routes.get_item import get_item_bp
-from Routes.post_batch_weight import post_batch_bp
-from Routes.get_unknown import get_unknown_bp
+import os
 
+def create_app():
+    """Application factory pattern."""
+    app = Flask(__name__, instance_relative_config=True)
+    
+    # Ensure the instance folder exists
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
 
-app = Flask(__name__)
-app.json.sort_keys = False
+    # Register the API Blueprint
+    import api_routes
+    app.register_blueprint(api_routes.api_bp)
 
-app.register_blueprint(get_health_bp) 
-app.register_blueprint(get_weight_bp)
-app.register_blueprint(post_weight_bp)
-app.register_blueprint(get_session_bp)
-app.register_blueprint(get_unknown_bp)
-app.register_blueprint(get_item_bp)
-app.register_blueprint(post_batch_bp)
+    # Register the UI Blueprint
+    import ui_routes
+    app.register_blueprint(ui_routes.ui_bp)
 
+    # a simple page that says hello
+    @app.route('/hello')
+    def hello():
+        return 'Hello, World!'
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    return app
+
+# This part is for running the app directly with `python app.py`
+if __name__ == '__main__':
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000, debug=True)

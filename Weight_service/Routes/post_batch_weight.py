@@ -120,7 +120,7 @@ def process_json(filepath):
 # MAIN ENDPOINT
 ###############################################
 @post_batch_bp.route('/batch-weight', methods=['POST'])
-def batch_weight():
+def post_batch_weight():
     data = request.get_json() or request.form
 
     if "file" not in data:
