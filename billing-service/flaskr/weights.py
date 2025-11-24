@@ -16,4 +16,4 @@ def init_weights(app):
         status = from_weights('health', {})
         print(f'weights service is up: {status}')
     except Exception:
-        print('Failed to connect to weights service.')
+        print(f'Failed to connect to weights service. http://localhost:{weights_port}/health')
