@@ -244,24 +244,15 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out, truc
     neto = None
 
     with conn.cursor() as cur:
-        # 1. Get IN bruto (Truck Tara)
-        cur.execute("""
-            SELECT bruto FROM transactions
-            WHERE session_id = %s AND direction='in'
-            ORDER BY datetime DESC LIMIT 1;
-        """, (session_id,))
-        
-        prev = cur.fetchone() # returns tuple (bruto,)
-        truck_tara = prev[0] if prev else None
-
-        # 2. Container Taras
+        # Container Taras
         unknown = False
         tara_sum = 0
         
         for cid in containers:
-            cur.execute("SELECT weight FROM containers WHERE id=%s", (cid,))
-            row = cur.fetchone() # returns tuple (weight,)
-            if row is None:
+            cur.execute("SELECT weight FROM containers_registered WHERE container_id=%s", (cid,))
+            row = cur.fetchone()  # dict: {"weight": int}
+
+            if row is None or row["weight"] is None:  # Check for NULL weight
                 unknown = True
             else:
                 tara_sum += row["weight"]
