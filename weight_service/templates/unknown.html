@@ -1,0 +1,93 @@
+{% extends "layout.html" %} {% block title %}Unknown Containers - Weight
+Service{% endblock %} {% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Unknown Containers</h2>
+      <p class="text-gray-500 text-sm">
+        Containers registered but missing weight data
+      </p>
+    </div>
+    <button
+      onclick="loadUnknown()"
+      class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-lg shadow-sm transition-all"
+    >
+      <i class="fas fa-sync-alt mr-2 text-primary"></i> Refresh List
+    </button>
+  </div>
+
+  <div
+    class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200"
+  >
+    <div id="loadingState" class="p-8 text-center text-gray-500">
+      <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+      <p>Loading containers...</p>
+    </div>
+
+    <div id="emptyState" class="hidden p-12 text-center">
+      <div
+        class="mx-auto h-12 w-12 text-green-500 bg-green-100 rounded-full flex items-center justify-center mb-4"
+      >
+        <i class="fas fa-check text-xl"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900">All Clear!</h3>
+      <p class="text-gray-500">
+        There are no unknown containers at the moment.
+      </p>
+    </div>
+
+    <ul id="containerList" class="divide-y divide-gray-200">
+      <!-- Items will be injected here -->
+    </ul>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  async function loadUnknown() {
+    const list = document.getElementById("containerList");
+    const loading = document.getElementById("loadingState");
+    const empty = document.getElementById("emptyState");
+
+    list.innerHTML = "";
+    loading.classList.remove("hidden");
+    empty.classList.add("hidden");
+
+    try {
+      const res = await fetch("/api/unknown");
+      const data = await res.json();
+
+      loading.classList.add("hidden");
+
+      if (data.length === 0) {
+        empty.classList.remove("hidden");
+        return;
+      }
+
+      data.forEach((id) => {
+        const li = document.createElement("li");
+        li.className =
+          "p-4 hover:bg-gray-50 flex justify-between items-center transition-colors";
+        li.innerHTML = `
+                <div class="flex items-center">
+                    <div class="h-10 w-10 flex-shrink-0 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 mr-4">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-900">${id}</span>
+                </div>
+                <a href="{{ url_for('ui.weight_form') }}?container=${id}" 
+                   class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-primary hover:bg-blue-700 shadow-sm">
+                    <i class="fas fa-balance-scale mr-1.5"></i> Weigh Now
+                </a>
+            `;
+        list.appendChild(li);
+      });
+    } catch (err) {
+      loading.classList.add("hidden");
+      showNotification("Error", "Failed to load unknown containers", "error");
+    }
+  }
+
+  // Load on page load
+  document.addEventListener("DOMContentLoaded", loadUnknown);
+</script>
+{% endblock %}

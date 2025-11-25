@@ -1,0 +1,272 @@
+{% extends "layout.html" %} {% block title %}Record Weight - Weight Service{%
+endblock %} {% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div class="bg-slate-800 p-6 text-white">
+      <h2 class="text-2xl font-bold flex items-center">
+        <i class="fas fa-weight-hanging mr-3 text-primary"></i> Record Weight
+      </h2>
+      <p class="text-gray-400 text-sm mt-1">
+        Enter truck or container details below
+      </p>
+    </div>
+
+    <form id="weightForm" class="p-8 space-y-6">
+      <!-- Direction Selection -->
+      <div class="grid grid-cols-3 gap-4">
+        <label class="cursor-pointer">
+          <input
+            type="radio"
+            name="direction"
+            value="in"
+            class="peer sr-only"
+            checked
+          />
+          <div
+            class="text-center p-4 rounded-lg border-2 border-gray-200 peer-checked:border-primary peer-checked:bg-blue-50 hover:bg-gray-50 transition-all"
+          >
+            <i
+              class="fas fa-arrow-right-to-bracket text-2xl mb-2 text-gray-500 peer-checked:text-primary"
+            ></i>
+            <div class="font-bold text-gray-700">IN</div>
+          </div>
+        </label>
+        <label class="cursor-pointer">
+          <input
+            type="radio"
+            name="direction"
+            value="out"
+            class="peer sr-only"
+          />
+          <div
+            class="text-center p-4 rounded-lg border-2 border-gray-200 peer-checked:border-primary peer-checked:bg-blue-50 hover:bg-gray-50 transition-all"
+          >
+            <i
+              class="fas fa-arrow-right-from-bracket text-2xl mb-2 text-gray-500 peer-checked:text-primary"
+            ></i>
+            <div class="font-bold text-gray-700">OUT</div>
+          </div>
+        </label>
+        <label class="cursor-pointer">
+          <input
+            type="radio"
+            name="direction"
+            value="none"
+            class="peer sr-only"
+          />
+          <div
+            class="text-center p-4 rounded-lg border-2 border-gray-200 peer-checked:border-primary peer-checked:bg-blue-50 hover:bg-gray-50 transition-all"
+          >
+            <i
+              class="fas fa-box text-2xl mb-2 text-gray-500 peer-checked:text-primary"
+            ></i>
+            <div class="font-bold text-gray-700">NONE</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Truck ID -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Truck License</label
+          >
+          <div class="relative">
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <i class="fas fa-truck text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              id="truck"
+              value="na"
+              class="pl-10 w-full rounded-lg border-gray-300 border p-2.5 focus:ring-primary focus:border-primary"
+              placeholder="e.g. 77-123-45"
+            />
+          </div>
+        </div>
+
+        <!-- Produce -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Produce Type</label
+          >
+          <div class="relative">
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <i class="fas fa-apple-alt text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              id="produce"
+              value="na"
+              class="pl-10 w-full rounded-lg border-gray-300 border p-2.5 focus:ring-primary focus:border-primary"
+              placeholder="e.g. Orange"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Containers -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1"
+          >Container IDs</label
+        >
+        <div class="relative">
+          <div
+            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+          >
+            <i class="fas fa-boxes text-gray-400"></i>
+          </div>
+          <input
+            type="text"
+            id="containers"
+            value="{{ container_id }}"
+            class="pl-10 w-full rounded-lg border-gray-300 border p-2.5 focus:ring-primary focus:border-primary"
+            placeholder="C-100, C-101 (Comma separated)"
+          />
+        </div>
+        <p class="text-xs text-gray-500 mt-1">
+          Separate multiple IDs with commas
+        </p>
+      </div>
+
+      <!-- Weight Input -->
+      <div class="grid grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Weight</label
+          >
+          <input
+            type="number"
+            id="weight"
+            required
+            class="w-full rounded-lg border-gray-300 border p-2.5 focus:ring-primary focus:border-primary font-mono text-lg"
+            placeholder="0"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Unit</label
+          >
+          <select
+            id="unit"
+            class="w-full rounded-lg border-gray-300 border p-2.5 focus:ring-primary focus:border-primary bg-white"
+          >
+            <option value="kg">Kilograms (kg)</option>
+            <option value="lbs">Pounds (lbs)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Force Checkbox -->
+      <div class="flex items-center">
+        <input
+          type="checkbox"
+          id="force"
+          class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+        />
+        <label for="force" class="ml-2 block text-sm text-gray-900">
+          Force Overwrite (if truck is already in session)
+        </label>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5"
+      >
+        <i class="fas fa-save mr-2"></i> Submit Weighing
+      </button>
+    </form>
+
+    <!-- Result Area -->
+    <div id="resultArea" class="hidden bg-gray-50 border-t border-gray-200 p-6">
+      <h3 class="text-lg font-bold text-gray-800 mb-2">Transaction Result</h3>
+      <div
+        id="resultContent"
+        class="text-sm font-mono bg-white p-4 rounded border border-gray-200"
+      ></div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document
+    .getElementById("weightForm")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Show loading state
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      btn.disabled = true;
+
+      // Prepare data
+      const formData = new URLSearchParams();
+      formData.append(
+        "direction",
+        document.querySelector('input[name="direction"]:checked').value
+      );
+      formData.append("truck", document.getElementById("truck").value);
+      formData.append(
+        "containers",
+        document.getElementById("containers").value
+      );
+      formData.append("weight", document.getElementById("weight").value);
+      formData.append("unit", document.getElementById("unit").value);
+      formData.append("produce", document.getElementById("produce").value);
+      formData.append("force", document.getElementById("force").checked);
+
+      try {
+        // NOTE: Using /api/weight here
+        const res = await fetch("/api/weight", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData,
+        });
+
+        const json = await res.json();
+        const resultArea = document.getElementById("resultArea");
+        const resultContent = document.getElementById("resultContent");
+
+        resultArea.classList.remove("hidden");
+
+        if (res.ok) {
+          showNotification(
+            "Success",
+            `Session ${json.id} recorded successfully`,
+            "success"
+          );
+          resultContent.innerHTML = `
+                <div class="text-green-600 font-bold mb-2">Status: Success (200 OK)</div>
+                <div>Session ID: ${json.id}</div>
+                <div>Bruto: ${json.bruto}</div>
+                ${json.neto ? `<div>Neto: ${json.neto}</div>` : ""}
+            `;
+          // Reset critical fields
+          document.getElementById("weight").value = "";
+        } else {
+          showNotification(
+            "Error",
+            json.error || "Transaction failed",
+            "error"
+          );
+          resultContent.innerHTML = `
+                <div class="text-red-600 font-bold">Error: ${
+                  json.error || "Unknown error"
+                }</div>
+            `;
+        }
+      } catch (err) {
+        showNotification("System Error", err.message, "error");
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    });
+</script>
+{% endblock %}
