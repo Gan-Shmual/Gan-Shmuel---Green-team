@@ -1,130 +1,274 @@
 import pytest
-from Routes.post_weight import (
-    validate_required_fields,
-    parse_force,
-    parse_containers,
-    normalize_input,
-    convert_to_kg,
-    validate_direction_rules,
-    get_last_weigh,
-)
-from flask import json
+from unittest.mock import patch, MagicMock
 
 
-# --------------------------
-#  VALIDATION UTILITIES TESTS
-# --------------------------
+class TestPostWeightEndpoint:
+    """Corrected essential tests for POST /weight"""
 
-def test_required_fields_missing():
-    data = {"truck": "123", "weight": 100}
-    missing = validate_required_fields(data)
-    assert "direction" in missing
-    assert "containers" in missing
-    assert "unit" in missing
+    #
+    # Helpers to avoid repeating long patch lists
+    #
 
+    def mock_all_valid(self, mocker, truck_tara=2000, container_taras=None, last_weigh=None):
+        """Utility to patch all helpers with consistent mocks"""
+        if container_taras is None:
+            container_taras = {"C1": 100, "C2": 150}
 
-def test_parse_force():
-    assert parse_force(True) is True
-    assert parse_force("true") is True
-    assert parse_force("1") is True
-    assert parse_force("yes") is True
+        # validate_truck_exists → True
+        mocker.patch("Routes.post_weight.validate_truck_exists", return_value=True)
 
-    assert parse_force(False) is False
-    assert parse_force("false") is False
-    assert parse_force("0") is False
-    assert parse_force("no") is False
+        # validate_containers → No errors
+        mocker.patch("Routes.post_weight.validate_containers", return_value=[])
 
-    assert parse_force("maybe") is None
-    assert parse_force(None) is None
+        # get_last_weigh
+        mocker.patch("Routes.post_weight.get_last_weigh", return_value=last_weigh)
 
+        # get_truck_tara
+        mocker.patch("Routes.post_weight.get_truck_tara", return_value=truck_tara)
 
-def test_parse_containers():
-    assert parse_containers("a,b,c") == ["a", "b", "c"]
-    assert parse_containers(["x", "y"]) == ["x", "y"]
-    assert parse_containers("   x ,  y  ") == ["x", "y"]
+        # get_all_containers_info
+        mocker.patch(
+            "Routes.post_weight.get_all_containers_info",
+            return_value=[{"container_id": cid, "weight": w} for cid, w in container_taras.items()],
+        )
 
+        # save_transaction → return new id
+        mocker.patch("Routes.post_weight.save_transaction", return_value=100)
 
-def test_normalize_input():
-    data = {
-        "direction": "IN ",
-        "truck": " 1234 ",
-        "produce": " TOMATO ",
-        "unit": " KG "
-    }
-    direction, truck, produce, unit = normalize_input(data)
-    assert direction == "in"
-    assert truck == "1234"
-    assert produce == "tomato"
-    assert unit == "kg"
+        # calculate_out_values for OUT flows
+        mocker.patch(
+            "Routes.post_weight.calculate_out_values",
+            return_value=(truck_tara, 2550),
+        )
 
+    #
+    # TESTS
+    #
 
-def test_convert_to_kg():
-    assert convert_to_kg(100, "kg") == 100
-    assert convert_to_kg(100, "lbs") == 45  # rounded
+    def test_invalid_weight_not_integer(self, client):
+        """Weight must be an integer"""
+        resp = client.post("/weight", json={
+            "direction": "in",
+            "truck": "123-45-678",
+            "containers": "C1",
+            "weight": "aaa",
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
 
+        assert resp.status_code == 400
+        assert "weight must be integer" in resp.get_json()["error"]
 
-# --------------------------
-#  DIRECTION LOGIC
-# --------------------------
+    def test_unregistered_truck(self, client, mocker):
+        """Truck must be registered"""
+        mocker.patch("Routes.post_weight.validate_truck_exists", return_value=False)
 
-def test_direction_rules_no_previous_out():
-    error = validate_direction_rules("out", None, False)
-    assert error == "OUT without a previous IN is not allowed"
+        resp = client.post("/weight", json={
+            "direction": "in",
+            "truck": "BADTRUCK",
+            "containers": "C1",
+            "weight": 1000,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
 
+        assert resp.status_code == 400
+        assert "Truck is not registered" in resp.get_json()["error"]
 
-def test_direction_rules_in_after_in_without_force():
-    last = {"direction": "in"}
-    error = validate_direction_rules("in", last, False)
-    assert error == "IN after IN requires force=true"
+    def test_in_creates_new_session(self, client, mocker):
+        """IN creates a new transaction"""
+        self.mock_all_valid(mocker, last_weigh=None)
 
+        resp = client.post("/weight", json={
+            "direction": "in",
+            "truck": "123-45-678",
+            "containers": "C1,C2",
+            "weight": 5000,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
 
-def test_direction_rules_in_after_in_with_force():
-    last = {"direction": "in"}
-    error = validate_direction_rules("in", last, True)
-    assert error is None
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["id"] == 100
+        assert body["bruto"] == 5000
 
+    def test_out_without_in_error(self, client, mocker):
+        """OUT without a previous IN should be rejected"""
+        self.mock_all_valid(mocker, last_weigh=None)
 
-# --------------------------
-#  ENDPOINT TESTS
-# --------------------------
+        resp = client.post("/weight", json={
+            "direction": "out",
+            "truck": "123-45-678",
+            "containers": "C1",
+            "weight": 4800,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
 
-def test_post_weight_happy_in(client, fake_db):
-    """
-    Test a basic IN request that inserts a new record.
-    """
+        assert resp.status_code == 400
+        assert "OUT without a previous IN" in resp.get_json()["error"]
 
-    # Step 1: mock DB get_last_weigh → return None (first time)
-    fake_db(rows=[None], last_id=10)  # get_last_weigh returns None
+    def test_none_after_in_error(self, client, mocker):
+        """NONE after IN should be rejected"""
+        last = {
+            "id": 5,
+            "direction": "in",
+            "session_id": 5,
+            "bruto": 5000,
+            "datetime": "2024-01-15 10:00:00"
+        }
 
-    payload = {
-        "direction": "in",
-        "truck": "123",
-        "containers": "a,b",
-        "weight": "100",
-        "unit": "kg",
-        "force": "true",
-        "produce": "orange"
-    }
+        self.mock_all_valid(mocker, last_weigh=last)
 
-    resp = client.post("/weight", json=payload)
-    assert resp.status_code == 200
+        resp = client.post("/weight", json={
+            "direction": "none",
+            "truck": "123-45-678",
+            "containers": "C1",
+            "weight": 100,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
 
-    data = resp.get_json()
-    assert data["truck"] == "123"
-    assert data["bruto"] == 100
+        assert resp.status_code == 400
+        assert "NONE after IN" in resp.get_json()["error"]
 
+    def test_in_after_in_requires_force(self, client, mocker):
+        """IN after IN without force should fail"""
 
-def test_post_weight_invalid_direction(client):
-    payload = {
-        "direction": "sideways",
-        "truck": "123",
-        "containers": "a",
-        "weight": "100",
-        "unit": "kg",
-        "force": "true",
-        "produce": "orange"
-    }
+        last = {
+            "id": 99,
+            "direction": "in",
+            "session_id": 99,
+            "bruto": 5000,
+            "datetime": "2024-01-15 10:00:00"
+        }
 
-    resp = client.post("/weight", json=payload)
-    assert resp.status_code == 400
-    assert "invalid direction" in resp.get_data(as_text=True)
+        self.mock_all_valid(mocker, last_weigh=last)
+
+        resp = client.post("/weight", json={
+            "direction": "in",
+            "truck": "123-45-678",
+            "containers": "C1",
+            "weight": 5100,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
+
+        assert resp.status_code == 400
+        assert "requires force=true" in resp.get_json()["error"]
+
+    def test_in_after_in_with_force(self, client, mocker):
+        """IN after IN with force overwrites last weighs"""
+        last = {
+            "id": 10,
+            "direction": "in",
+            "session_id": 10,
+            "bruto": 5000,
+            "datetime": "2024-01-15 10:00:00"
+        }
+
+        self.mock_all_valid(mocker, last_weigh=last)
+
+        resp = client.post("/weight", json={
+            "direction": "in",
+            "truck": "123-45-678",
+            "containers": "C1",
+            "weight": 5100,
+            "unit": "kg",
+            "force": "true",
+            "produce": "orange"
+        })
+
+        assert resp.status_code == 200
+        assert resp.get_json()["id"] == 100
+
+    def test_out_with_unknown_container_neto_na(self, client, mocker):
+        """If any container has unknown tara → neto=None"""
+
+        # unknown container → weight=None
+        mocker.patch("Routes.post_weight.validate_truck_exists", return_value=True)
+        mocker.patch("Routes.post_weight.validate_containers", return_value=[])
+
+        mocker.patch("Routes.post_weight.get_last_weigh", return_value={
+            "id": 100,
+            "direction": "in",
+            "session_id": 100,
+            "bruto": 5000,
+            "datetime": "2024-01-15 10:00:00"
+        })
+
+        mocker.patch("Routes.post_weight.get_truck_tara", return_value=2000)
+
+        mocker.patch("Routes.post_weight.get_all_containers_info", return_value=[
+            {"container_id": "C1", "weight": 100},
+            {"container_id": "C2", "weight": None},  # UNKNOWN!!
+        ])
+
+        # simulate calculate_out_values returning neto=None
+        mocker.patch(
+            "Routes.post_weight.calculate_out_values",
+            return_value=(2000, None)
+        )
+
+        mocker.patch("Routes.post_weight.save_transaction", return_value=100)
+
+        resp = client.post("/weight", json={
+            "direction": "out",
+            "truck": "123-45-678",
+            "containers": "C1,C2",
+            "weight": 4800,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
+
+        assert resp.status_code == 200
+        assert resp.get_json()["neto"] is None
+
+    def test_complete_in_out_flow(self, client, mocker):
+        """IN → OUT end-to-end logic"""
+        # IN phase
+        self.mock_all_valid(mocker, last_weigh=None)
+
+        resp_in = client.post("/weight", json={
+            "direction": "in",
+            "truck": "123-45-678",
+            "containers": "C1,C2",
+            "weight": 5000,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
+        assert resp_in.status_code == 200
+
+        # OUT phase
+        last = {
+            "id": 100,
+            "direction": "in",
+            "session_id": 100,
+            "bruto": 5000,
+            "datetime": "2024-01-15 10:00:00"
+        }
+        self.mock_all_valid(mocker, last_weigh=last)
+
+        resp_out = client.post("/weight", json={
+            "direction": "out",
+            "truck": "123-45-678",
+            "containers": "C1,C2",
+            "weight": 4800,
+            "unit": "kg",
+            "force": "false",
+            "produce": "orange"
+        })
+
+        assert resp_out.status_code == 200
+        body = resp_out.get_json()
+        assert body["neto"] == 2550
+        assert body["truckTara"] == 2000

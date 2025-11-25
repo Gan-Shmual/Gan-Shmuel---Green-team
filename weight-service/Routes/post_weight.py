@@ -4,7 +4,6 @@ import traceback
 
 post_weight_bp = Blueprint("post_weight", __name__)
 
-###############################################
 # VALIDATION UTILITIES
 ###############################################
 def validate_required_fields(data):
@@ -35,6 +34,7 @@ def normalize_input(data):
 
 ###############################################
 # WEIGHT UTILITIES
+# WEIGHT UTILITIES
 ###############################################
 def convert_to_kg(weight, unit):
     return weight if unit == "kg" else int(round(weight * 0.453592))
@@ -42,6 +42,7 @@ def convert_to_kg(weight, unit):
 ###############################################
 # DATABASE HELPERS
 ###############################################
+# Fetch last weigh for a truck (from transactions)
 def get_last_weigh(truck):
     conn = get_db()
     sql = """
@@ -55,7 +56,7 @@ def get_last_weigh(truck):
     with conn.cursor() as cur:
         cur.execute(sql, (truck,))
         row = cur.fetchone()
-        
+        # If found, return as dict
         if row:
             return {
                 "id": row["id"],
@@ -66,12 +67,23 @@ def get_last_weigh(truck):
             }
 
     return None
-
+# Update session_id for a transaction 
 def update_session_id(transaction_id, session_id):
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute("UPDATE transactions SET session_id=%s WHERE id=%s;", (session_id, transaction_id))
     conn.commit()
+
+def validate_truck_exists(truck_id):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT container_id 
+            FROM containers_registered 
+            WHERE container_id = %s
+        """, (truck_id,))
+        row = cur.fetchone()
+        return row is not None
 
 ###############################################
 # DIRECTION RULE ENGINE
@@ -96,10 +108,88 @@ def validate_direction_rules(direction, last_weigh, force):
 ###############################################
 # SESSION HANDLING
 ###############################################
+# used for out 
+# it attaches the transaction to the previous in session 
 def resolve_session_id(direction, last_weigh):
     if direction in ["in", "none"]:
         return None
     return last_weigh["session_id"] if last_weigh else None
+
+###############################################
+# Tara & Containers fetch
+###############################################
+def get_truck_tara(truck_id):
+    try:
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT weight 
+                FROM containers_registered 
+                WHERE container_id = %s
+            """, (truck_id,))
+            result = cur.fetchone()
+            
+            if result and result['weight'] is not None:
+                return result['weight']
+            
+            # If not found in db, check previous transactions
+            cur.execute("""
+                SELECT truckTara 
+                FROM transactions 
+                WHERE truck = %s AND truckTara IS NOT NULL
+                ORDER BY datetime DESC 
+                LIMIT 1
+            """, (truck_id,))
+            result = cur.fetchone()
+            return result['truckTara'] if result else None
+            
+    except Exception as e:
+        print(f"Error fetching tara for truck {truck_id}: {e}")
+        return None
+    
+def get_container_info(container_id):
+    try:
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT container_id, weight 
+                FROM containers_registered 
+                WHERE container_id = %s
+            """, (container_id,))
+            return cur.fetchone()
+    except Exception as e:
+        print(f"Error fetching container {container_id}: {e}")
+        return None
+
+def get_all_containers_info(containers):
+    containers_data = []
+    for container_id in containers:
+        container_info = get_container_info(container_id.strip())
+        if container_info:
+            containers_data.append(container_info)
+    return containers_data
+
+def validate_containers(containers):
+    conn = get_db()
+    errors = []
+
+    with conn.cursor() as cur:
+        for cid in containers:
+            cid = cid.strip()
+
+            cur.execute("""
+                SELECT weight 
+                FROM containers_registered 
+                WHERE container_id = %s
+            """, (cid,))
+            row = cur.fetchone()
+
+            if row is None:
+                errors.append(f"{cid} not registered, please register it first")
+            elif row["weight"] is None:
+                errors.append(f"{cid} NULL weight in database, please update its weight first")
+
+    return errors
 
 ###############################################
 # INSERT + UPDATE
@@ -108,23 +198,33 @@ def save_transaction(direction, truck, containers, bruto, produce, session_id, l
     conn = get_db()
     new_id = None
     
+    # Fetch truck tara from database
+    truck_tara = get_truck_tara(truck)
+    if truck_tara is None:
+        print(f"Warning: Could not fetch truckTara for truck {truck}")
+        truck_tara = None  # Store as NULL in database
+    
+    # Fetch container information (if needed)
+    containers_info = get_all_containers_info(containers)
+    print(f"Fetched info for {len(containers_info)} containers")
+    
     with conn.cursor() as cur:
         if last_weigh and direction == last_weigh["direction"] and force:
             sql = """
                 UPDATE transactions
-                SET direction=%s, truck=%s, containers=%s, bruto=%s, produce=%s, datetime=NOW()
+                SET direction=%s, truck=%s, containers=%s, bruto=%s, truckTara=%s, produce=%s, datetime=NOW()
                 WHERE id=%s;
             """
-            params = (direction, truck, ",".join(containers), bruto, produce, last_weigh["id"])
+            params = (direction, truck, ",".join(containers), bruto, truck_tara, produce, last_weigh["id"])
             cur.execute(sql, params)
             new_id = last_weigh["id"]
         else:
             sql = """
                 INSERT INTO transactions
-                (direction, truck, containers, bruto, produce, session_id, datetime)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW());
+                (direction, truck, containers, bruto, truckTara, produce, session_id, datetime)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW());
             """
-            params = (direction, truck, ",".join(containers), bruto, produce, session_id)
+            params = (direction, truck, ",".join(containers), bruto, truck_tara, produce, session_id)
             cur.execute(sql, params)
             new_id = cur.lastrowid
     
@@ -138,7 +238,7 @@ def save_transaction(direction, truck, containers, bruto, produce, session_id, l
 ###############################################
 # OUT CALCULATIONS
 ###############################################
-def calculate_out_values(transaction_id, session_id, containers, bruto_out):
+def calculate_out_values(transaction_id, session_id, containers, bruto_out, truck):
     conn = get_db()
     truck_tara = None
     neto = None
@@ -151,29 +251,33 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out):
             ORDER BY datetime DESC LIMIT 1;
         """, (session_id,))
         
-        prev = cur.fetchone()  # returns dict: {"bruto": int}
-        truck_tara = prev["bruto"] if prev else None
+        prev = cur.fetchone() # returns tuple (bruto,)
+        truck_tara = prev[0] if prev else None
 
         # 2. Container Taras
         unknown = False
         tara_sum = 0
         
         for cid in containers:
-            cur.execute("SELECT weight FROM containers_registered WHERE container_id=%s", (cid,))
-            row = cur.fetchone()  # dict: {"weight": int}
-
+            cur.execute("SELECT weight FROM containers WHERE id=%s", (cid,))
+            row = cur.fetchone() # returns tuple (weight,)
             if row is None:
                 unknown = True
             else:
                 tara_sum += row["weight"]
 
-        # 3. Calculate neto
+        truck_tara = get_truck_tara(truck)
+        if truck_tara is None:
+            print(f"Warning: Could not fetch truckTara for truck {truck}")
+            truck_tara = None  # Store as NULL in database
+        
+        # Calculate neto
         if unknown or truck_tara is None:
             neto = None
         else:
             neto = bruto_out - truck_tara - tara_sum
 
-        # 4. Update OUT transaction
+        # Update OUT transaction
         cur.execute("""
             UPDATE transactions SET truckTara=%s, neto=%s
             WHERE id=%s;
@@ -235,6 +339,20 @@ def post_weight():
     containers = parse_containers(data["containers"])
     weight = convert_to_kg(weight, unit)
 
+    # Validate truck existence
+    if truck.lower() not in ["na", "none"]:
+        if not validate_truck_exists(truck):
+            return jsonify({
+                "error": "Truck is not registered. Please register your truck and come back (use batch weight)."
+            }), 400
+
+    # Validate containers - check for unknown or NULL weight containers
+    unknown_containers = validate_containers(containers)
+    if unknown_containers:
+        return jsonify({
+            "error": f"Unknown containers: {', '.join(unknown_containers)}"
+        }), 400
+
     try:
         # last weigh
         last = get_last_weigh(truck)
@@ -257,7 +375,7 @@ def post_weight():
         truck_tara = None
         neto = None
         if direction == "out":
-            truck_tara, neto = calculate_out_values(tx_id, session_id, containers, weight)
+            truck_tara, neto = calculate_out_values(tx_id, session_id, containers, weight, truck)
 
         # response
         return jsonify(build_response(direction, tx_id, truck, weight, truck_tara, neto)), 200
