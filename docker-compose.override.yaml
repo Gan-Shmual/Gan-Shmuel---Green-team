@@ -1,0 +1,15 @@
+services:
+  weight-app:
+    build: ./wight_service
+    volumes:
+      - ./weight_service/in:/app/in
+  billing-service:
+    build: ./billing-service
+    volumes:
+      - ./billing-service/data/in:/app/in
+  weight-db:
+    volumes:
+      - ./weight_service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql:Z
+  db:
+    volumes:
+      - ./billing-service/data/init:/docker-entrypoint-initdb.d
