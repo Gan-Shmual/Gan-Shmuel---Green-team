@@ -1,6 +1,6 @@
 services:
   # Your Flask application service
-  weight-app:
+  weight-service:
     build: .
     ports:
       - "5000:5000"
