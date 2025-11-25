@@ -1,66 +1,67 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
-def test_get_item_container_found(client, mock_db):
-    """Test finding a registered container."""
-    # 1. Setup Mock Data
-    # Query 1 (fetchone): Check Container -> Returns result
-    # Query 2 (fetchall): Get Sessions -> Returns list of sessions
-    
-    # We use .side_effect for fetchone to simulate the sequence of calls
-    container_data = {"weight": 500}
-    session_data = [{"session_id": 1001}, {"session_id": 1002}]
+class TestGetItem:
+    """Essential GET /item/<id> tests"""
 
-    # Initialize mock (we handle specific returns manually below)
-    mock_cursor = mock_db() 
-    
-    # Configure the sequence of returns
-    mock_cursor.fetchone.side_effect = [container_data] 
-    mock_cursor.fetchall.return_value = session_data
+    def test_get_item_registered_container(self, client, mock_get_db, mock_db, mock_datetime_item):
+        """Container exists → return tara + sessions"""
+        mock_conn, mock_cursor = mock_db
 
-    # 2. Execute
-    rv = client.get("/item/C-100")
+        # 1st fetchone: container lookup
+        mock_cursor.fetchone.side_effect = [
+            {"weight": 150}  # container tara
+        ]
 
-    # 3. Assert
-    assert rv.status_code == 200
-    data = rv.get_json()
-    assert data["id"] == "C-100"
-    assert data["tara"] == 500
-    assert data["sessions"] == ["1001", "1002"]
+        # fetchall: sessions for this container
+        mock_cursor.fetchall.return_value = [
+            {"session_id": 1},
+            {"session_id": 2},
+            {"session_id": 5}
+        ]
 
-def test_get_item_truck_found(client, mock_db):
-    """Test finding a truck (container check fails, truck check succeeds)."""
-    # 1. Setup Mock Data
-    # Query 1 (fetchone): Check Container -> Returns None (Not found)
-    # Query 2 (fetchone): Check Truck -> Returns result
-    # Query 3 (fetchall): Get Sessions -> Returns list
-    
-    truck_data = {"truckTara": 2000}
-    session_data = [{"session_id": 500}]
+        response = client.get('/item/C1')
+        data = response.get_json()
 
-    mock_cursor = mock_db()
-    
-    # Sequence: None (Container), Truck Data (Truck)
-    mock_cursor.fetchone.side_effect = [None, truck_data]
-    mock_cursor.fetchall.return_value = session_data
+        assert response.status_code == 200
+        assert data["id"] == "C1"
+        assert data["tara"] == 150
+        assert data["sessions"] == ["1", "2", "5"]
 
-    # 2. Execute
-    rv = client.get("/item/T-123")
+    def test_get_item_truck(self, client, mock_get_db, mock_db, mock_datetime_item):
+        """Truck exists → return truck tara + sessions"""
+        mock_conn, mock_cursor = mock_db
 
-    # 3. Assert
-    assert rv.status_code == 200
-    data = rv.get_json()
-    assert data["id"] == "T-123"
-    assert data["tara"] == 2000
-    assert data["sessions"] == ["500"]
+        # First fetchone: container lookup → None
+        # Second fetchone: truck lookup → truckTara found
+        mock_cursor.fetchone.side_effect = [
+            None,                  # not a container
+            {"truckTara": 2000}    # truck found
+        ]
 
-def test_get_item_not_found(client, mock_db):
-    """Test when neither container nor truck is found."""
-    # Both queries return None
-    mock_cursor = mock_db()
-    mock_cursor.fetchone.side_effect = [None, None]
+        mock_cursor.fetchall.return_value = [
+            {"session_id": 10},
+            {"session_id": 11}
+        ]
 
-    rv = client.get("/item/UNKNOWN_ID")
+        response = client.get('/item/123-45-678')
+        data = response.get_json()
 
-    assert rv.status_code == 404
-    assert "Item not found" in rv.get_data(as_text=True)
+        assert response.status_code == 200
+        assert data["id"] == "123-45-678"
+        assert data["tara"] == 2000
+        assert data["sessions"] == ["10", "11"]
+
+    def test_get_item_not_found(self, client, mock_get_db, mock_db, mock_datetime_item):
+        """Neither container nor truck exists → 404"""
+        mock_conn, mock_cursor = mock_db
+
+        # container lookup → None
+        # truck lookup → None
+        mock_cursor.fetchone.side_effect = [None, None]
+
+        response = client.get('/item/NONEXISTENT')
+        data = response.get_json()
+
+        assert response.status_code == 404
+        assert "Item not found" in data["error"]

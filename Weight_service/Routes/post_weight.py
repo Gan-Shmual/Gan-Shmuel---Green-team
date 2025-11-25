@@ -42,6 +42,7 @@ def convert_to_kg(weight, unit):
 ###############################################
 # DATABASE HELPERS
 ###############################################
+# Fetch last weigh for a truck (from transactions)
 def get_last_weigh(truck):
     conn = get_db()
     sql = """
@@ -55,7 +56,7 @@ def get_last_weigh(truck):
     with conn.cursor() as cur:
         cur.execute(sql, (truck,))
         row = cur.fetchone()
-        
+        # If found, return as dict
         if row:
             return {
                 "id": row["id"],
@@ -66,12 +67,23 @@ def get_last_weigh(truck):
             }
 
     return None
-
+# Update session_id for a transaction 
 def update_session_id(transaction_id, session_id):
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute("UPDATE transactions SET session_id=%s WHERE id=%s;", (session_id, transaction_id))
     conn.commit()
+
+def validate_truck_exists(truck_id):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT container_id 
+            FROM containers_registered 
+            WHERE container_id = %s
+        """, (truck_id,))
+        row = cur.fetchone()
+        return row is not None
 
 ###############################################
 # DIRECTION RULE ENGINE
@@ -96,6 +108,8 @@ def validate_direction_rules(direction, last_weigh, force):
 ###############################################
 # SESSION HANDLING
 ###############################################
+# used for out 
+# it attaches the transaction to the previous in session 
 def resolve_session_id(direction, last_weigh):
     if direction in ["in", "none"]:
         return None
@@ -105,11 +119,9 @@ def resolve_session_id(direction, last_weigh):
 # Tara & Containers fetch
 ###############################################
 def get_truck_tara(truck_id):
-    """Fetch tara value for a specific truck from database"""
     try:
         conn = get_db()
         with conn.cursor() as cur:
-            # First, try to get it from containers_registered (this is where truck taras are stored!)
             cur.execute("""
                 SELECT weight 
                 FROM containers_registered 
@@ -120,7 +132,7 @@ def get_truck_tara(truck_id):
             if result and result['weight'] is not None:
                 return result['weight']
             
-            # If not found there, fall back to checking previous transactions
+            # If not found in db, check previous transactions
             cur.execute("""
                 SELECT truckTara 
                 FROM transactions 
@@ -136,7 +148,6 @@ def get_truck_tara(truck_id):
         return None
     
 def get_container_info(container_id):
-    """Fetch info for a specific container from database"""
     try:
         conn = get_db()
         with conn.cursor() as cur:
@@ -151,7 +162,6 @@ def get_container_info(container_id):
         return None
 
 def get_all_containers_info(containers):
-    """Fetch info for multiple containers"""
     containers_data = []
     for container_id in containers:
         container_info = get_container_info(container_id.strip())
@@ -160,24 +170,26 @@ def get_all_containers_info(containers):
     return containers_data
 
 def validate_containers(containers):
-    """Validate that all containers exist and have non-NULL weights"""
     conn = get_db()
-    unknown_containers = []
-    
+    errors = []
+
     with conn.cursor() as cur:
-        for container_id in containers:
+        for cid in containers:
+            cid = cid.strip()
+
             cur.execute("""
-                SELECT container_id, weight 
+                SELECT weight 
                 FROM containers_registered 
                 WHERE container_id = %s
-            """, (container_id.strip(),))
-            result = cur.fetchone()
-            
-            # If container doesn't exist OR weight is NULL
-            if result is None or result['weight'] is None:
-                unknown_containers.append(container_id.strip())
-    
-    return unknown_containers
+            """, (cid,))
+            row = cur.fetchone()
+
+            if row is None:
+                errors.append(f"{cid} not registered, please register it first")
+            elif row["weight"] is None:
+                errors.append(f"{cid} NULL weight in database, please update its weight first")
+
+    return errors
 
 ###############################################
 # INSERT + UPDATE
@@ -318,11 +330,18 @@ def post_weight():
     containers = parse_containers(data["containers"])
     weight = convert_to_kg(weight, unit)
 
+    # Validate truck existence
+    if truck.lower() not in ["na", "none"]:
+        if not validate_truck_exists(truck):
+            return jsonify({
+                "error": "Truck is not registered. Please register your truck and come back (use batch weight)."
+            }), 400
+
     # Validate containers - check for unknown or NULL weight containers
     unknown_containers = validate_containers(containers)
     if unknown_containers:
         return jsonify({
-            "error": f"Unknown containers (or containers with missing weight): {', '.join(unknown_containers)}"
+            "error": f"Unknown containers: {', '.join(unknown_containers)}"
         }), 400
 
     try:
