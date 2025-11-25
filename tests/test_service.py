@@ -3,7 +3,7 @@ import time
 import pytest
 
 
-WEIGHT_BASE = "http://weight-app:5000"
+WEIGHT_BASE = "http://weight-service:5000"
 #helper func to wait for the service(db included)
 def wait_for_weight_service(timeout=30):
     start = time.time()

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-BASE="weight-app:5000"
+BASE="weight-service:5000"
 
 curl --location "http://${BASE}/batch-weight" \
 --header 'Content-Type: application/json' \
