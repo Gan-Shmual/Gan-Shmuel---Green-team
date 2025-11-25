@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 
 set -e
-#####test######
 REPO_DIR=${1:-/workspace/Gan-Shmuel---Green-team}
 
 log() {
     echo "[UNIT-TESTS $(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-python3 -m pip install --upgrade pip 
-pip install pymysql
 log "Running unit tests in parallel..."
 
 #run billing unit tests in background
 if [ -d "$REPO_DIR/billing-service/tests" ]; then
     log "Installing billing-service dependencies..."
+    pip install -r "$REPO_DIR/billing-service/requirements.txt" --break-system-pacages -q 2>/dev/null || true
     log "Starting billing unit tests..."
     (
         set +e
@@ -32,6 +30,7 @@ fi
 #run weight unit tests in backgroud
 if [ -d "$REPO_DIR/weight-service/tests" ]; then
     log "Installing weight-service dependencies..."
+    pip install -r "$REPO_DIR/billing-service/requirements.txt" --break-system-packages -q 2>/dev/null || true 
     log "Starting weight unit tests..."
     (
         set +e
