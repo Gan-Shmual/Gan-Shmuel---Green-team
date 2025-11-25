@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}Trucks{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-6">
+
+  <h2 class="text-2xl font-bold mb-4">Manage Trucks</h2>
+
+  <!-- Create -->
+  <h3 class="font-semibold mb-1 text-gray-700">Create Truck</h3>
+  <div class="grid grid-cols-3 gap-3 mb-4">
+      <input id="truckId" class="border p-2 rounded" placeholder="License">
+      <input id="truckProvider" class="border p-2 rounded" placeholder="Provider ID">
+      <button class="bg-primary text-white px-3 rounded"
+              onclick="createTruck()">Create</button>
+  </div>
+
+  <!-- Update -->
+  <h3 class="font-semibold mb-1 text-gray-700">Update Truck</h3>
+  <div class="grid grid-cols-3 gap-3 mb-4">
+      <input id="updateTruckId" class="border p-2 rounded" placeholder="License">
+      <input id="updateTruckProvider" class="border p-2 rounded"
+             placeholder="New Provider ID">
+      <button class="bg-primary text-white px-3 rounded"
+              onclick="updateTruck()">Update</button>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createTruck() {
+    const id = document.getElementById("truckId").value;
+    const provider = document.getElementById("truckProvider").value;
+
+    const res = await fetch("/truck", {
+        method: "POST",
+        body: JSON.stringify({ id, provider }),
+        headers: {"Content-Type": "application/json"}
+    });
+    const data = await res.json();
+
+    if (!res.ok) return showNotification("Error", data.error, "error");
+    showNotification("Success", "Truck created", "success");
+}
+
+async function updateTruck() {
+    const id = document.getElementById("updateTruckId").value;
+    const provider = document.getElementById("updateTruckProvider").value;
+
+    const res = await fetch(`/truck/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ provider }),
+        headers: {"Content-Type": "application/json"}
+    });
+
+    const data = await res.json();
+    if (!res.ok) return showNotification("Error", data.error, "error");
+    showNotification("Success", "Truck updated", "success");
+}
+</script>
+{% endblock %}

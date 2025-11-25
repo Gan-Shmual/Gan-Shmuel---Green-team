@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}Providers{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-6">
+
+  <h2 class="text-2xl font-bold mb-4">Manage Providers</h2>
+
+  <!-- Create -->
+  <h3 class="font-semibold text-gray-700 mb-1">Create Provider</h3>
+  <div class="flex gap-2 mb-4">
+      <input id="newProvider" class="w-full border p-2 rounded"
+             placeholder="Provider name">
+      <button class="bg-primary text-white px-3 rounded"
+              onclick="createProvider()">Create</button>
+  </div>
+
+  <!-- Update -->
+  <h3 class="font-semibold text-gray-700 mb-1">Update Provider</h3>
+  <div class="grid grid-cols-3 gap-3">
+      <input id="updateId" class="border p-2 rounded" placeholder="ID">
+      <input id="updateName" class="border p-2 rounded" placeholder="New name">
+      <button class="bg-primary text-white px-3 rounded"
+              onclick="updateProvider()">Update</button>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createProvider() {
+    const name = document.getElementById("newProvider").value.trim();
+
+    const res = await fetch("/provider", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+        headers: {"Content-Type": "application/json"}
+    });
+
+    const data = await res.json();
+    if (!res.ok) return showNotification("Error", data.error, "error");
+
+    showNotification("Success", `Provider created ID=${data.id}`, "success");
+}
+
+async function updateProvider() {
+    const id = document.getElementById("updateId").value.trim();
+    const name = document.getElementById("updateName").value.trim();
+
+    const res = await fetch(`/provider/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name }),
+        headers: {"Content-Type": "application/json"}
+    });
+
+    const data = await res.json();
+    if (!res.ok) return showNotification("Error", data.error, "error");
+
+    showNotification("Success", "Provider updated", "success");
+}
+</script>
+{% endblock %}
