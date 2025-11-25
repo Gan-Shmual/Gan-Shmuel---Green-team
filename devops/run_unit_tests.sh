@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-
+#####test######
 REPO_DIR=${1:-/workspace/Gan-Shmuel---Green-team}
 
 log() {
