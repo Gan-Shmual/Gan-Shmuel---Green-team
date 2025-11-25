@@ -1,7 +1,9 @@
 import time
 import requests
 
-BASE = "http://localhost:5000"
+BASE = "http://weigt-app:5000"
+
+
 
 def test_session_1001_exists():
     # Retry until service up (simple wait loop)
@@ -9,7 +11,7 @@ def test_session_1001_exists():
     start = time.time()
     while True:
         try:
-            r = requests.get(f"{BASE}/session/1", timeout=2)
+            r = requests.get(f"{BASE}/session/1001", timeout=2)
             break
         except requests.exceptions.ConnectionError:
             if time.time() - start > timeout:
