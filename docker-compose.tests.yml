@@ -1,5 +1,5 @@
 include:
-  - ./Weight_service/docker-compose.yml
+  - ./weight-service/docker-compose.yml
   - ./billing-service/docker-compose.yml
   #- docker-compose.yaml
 services:
