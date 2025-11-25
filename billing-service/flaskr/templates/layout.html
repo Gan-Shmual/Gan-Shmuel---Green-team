@@ -15,10 +15,7 @@
     />
 
     <!-- Custom CSS -->
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 
     <!-- Tailwind Custom Config -->
     <script>
@@ -44,9 +41,19 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
 
-          <!-- Logo -->
-          <div class="flex items-center">
-            <i class="fas fa-file-invoice-dollar text-primary text-2xl mr-3"></i>
+          <!-- Logo + Title -->
+          <div class="flex items-center space-x-3">
+            <!-- Logo -->
+            <img
+              src="{{ url_for('static', filename='img/green_team_logo.png') }}"
+              alt="Green Team Logo"
+              class="h-14 w-auto drop-shadow-lg"
+            />
+
+            <!-- Billing Icon -->
+            <i class="fas fa-file-invoice-dollar text-primary text-2xl"></i>
+
+            <!-- Title -->
             <h1 class="text-xl font-bold tracking-wide">
               Gan Shmuel <span class="text-primary font-light">Billing</span>
             </h1>
@@ -58,7 +65,7 @@
             {% set active = "bg-primary text-white shadow-md" %}
             {% set inactive = "text-gray-300 hover:bg-slate-800 hover:text-white" %}
 
-            <!-- Billing Summary -->
+            <!-- Summary -->
             <a
               href="{{ url_for('ui_bp.billing_page') }}"
               class="{{ nav_classes }} {{ active if request.endpoint == 'ui_bp.billing_page' else inactive }}"
@@ -89,9 +96,38 @@
             >
               <i class="fas fa-coins mr-1"></i> Rates
             </a>
+
+            <!-- Toggle Between UIs -->
+            <div class="flex items-center space-x-3 ml-6 border-l border-slate-700 pl-4">
+
+              <span class="text-sm text-gray-300">Switch UI:</span>
+
+              <button
+                onclick="window.location.href='http://localhost:5001/'"
+                class="px-3 py-1 rounded-md text-sm font-medium bg-primary text-white hover:bg-blue-700 transition"
+              >
+                Billing
+              </button>
+
+              <button
+                onclick="window.location.href='http://localhost:5000/'"
+                class="px-3 py-1 rounded-md text-sm font-medium bg-slate-700 text-white hover:bg-slate-800 transition"
+              >
+                Weight
+              </button>
+
+              <!-- NEW: Monitor Button -->
+              <button
+                onclick="window.location.href='http://localhost:8085/'"
+                class="px-3 py-1 rounded-md text-sm font-medium bg-green-700 text-white hover:bg-green-800 transition"
+              >
+                Monitor
+              </button>
+
+            </div>
           </div>
 
-        </div>
+        </div> <!-- END flex justify-between -->
       </div>
     </nav>
 
@@ -120,10 +156,7 @@
       >
         <div class="flex items-start">
           <div class="flex-shrink-0">
-            <i
-              id="notification-icon"
-              class="fas fa-check-circle text-success text-xl"
-            ></i>
+            <i id="notification-icon" class="fas fa-check-circle text-success text-xl"></i>
           </div>
           <div class="ml-3 w-0 flex-1">
             <p id="notification-title" class="text-sm font-bold text-gray-900"></p>
