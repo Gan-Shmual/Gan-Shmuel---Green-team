@@ -5,7 +5,7 @@ from flaskr.models.biling import Rate
 import os
 from sqlalchemy import text
 
-IN_FOLDER = "/data/in"
+IN_FOLDER = "/app/in"
 LATEST = os.path.join(IN_FOLDER, "rates_latest.xlsx")
 
 rates = Blueprint('rates', __name__)

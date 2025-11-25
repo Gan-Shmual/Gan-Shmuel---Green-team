@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Billing Service{% endblock %}</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Custom CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+
+    <!-- Tailwind Custom Config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#2563eb",
+              secondary: "#1e40af",
+              success: "#10b981",
+              danger: "#ef4444",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+
+  <body class="h-full flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="bg-slate-900 text-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+
+          <!-- Logo -->
+          <div class="flex items-center">
+            <i class="fas fa-file-invoice-dollar text-primary text-2xl mr-3"></i>
+            <h1 class="text-xl font-bold tracking-wide">
+              Gan Shmuel <span class="text-primary font-light">Billing</span>
+            </h1>
+          </div>
+
+          <!-- Menu -->
+          <div class="flex items-center space-x-2">
+            {% set nav_classes = "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200" %}
+            {% set active = "bg-primary text-white shadow-md" %}
+            {% set inactive = "text-gray-300 hover:bg-slate-800 hover:text-white" %}
+
+            <!-- Billing Summary -->
+            <a
+              href="{{ url_for('ui_bp.billing_page') }}"
+              class="{{ nav_classes }} {{ active if request.endpoint == 'ui_bp.billing_page' else inactive }}"
+            >
+              <i class="fas fa-calculator mr-1"></i> Summary
+            </a>
+
+            <!-- Providers -->
+            <a
+              href="{{ url_for('ui_bp.providers_page') }}"
+              class="{{ nav_classes }} {{ active if request.endpoint == 'ui_bp.providers_page' else inactive }}"
+            >
+              <i class="fas fa-users mr-1"></i> Providers
+            </a>
+
+            <!-- Trucks -->
+            <a
+              href="{{ url_for('ui_bp.trucks_page') }}"
+              class="{{ nav_classes }} {{ active if request.endpoint == 'ui_bp.trucks_page' else inactive }}"
+            >
+              <i class="fas fa-truck mr-1"></i> Trucks
+            </a>
+
+            <!-- Rates -->
+            <a
+              href="{{ url_for('ui_bp.rates_page') }}"
+              class="{{ nav_classes }} {{ active if request.endpoint == 'ui_bp.rates_page' else inactive }}"
+            >
+              <i class="fas fa-coins mr-1"></i> Rates
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-sm text-gray-500">
+          &copy; 2025 Gan Shmuel Billing Systems. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Notification Toast -->
+    <div
+      id="notification"
+      class="fixed bottom-0 right-0 m-6 hidden z-50 transform transition-all duration-300"
+    >
+      <div
+        class="bg-white rounded-lg shadow-xl border-l-4 p-4 max-w-sm"
+        id="notification-border"
+      >
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <i
+              id="notification-icon"
+              class="fas fa-check-circle text-success text-xl"
+            ></i>
+          </div>
+          <div class="ml-3 w-0 flex-1">
+            <p id="notification-title" class="text-sm font-bold text-gray-900"></p>
+            <p id="notification-message" class="mt-1 text-sm text-gray-500"></p>
+          </div>
+          <div class="ml-4 flex-shrink-0 flex">
+            <button
+              id="notification-close"
+              class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
+            >
+              <span class="sr-only">Close</span>
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JS -->
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
