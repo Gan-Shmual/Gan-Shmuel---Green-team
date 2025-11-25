@@ -251,7 +251,7 @@ def calculate_out_values(transaction_id, session_id, containers, bruto_out, truc
             truck_tara = None  # Store as NULL in database
         
         # Calculate neto
-        if unknown or truck_tara or tara_sum is None:
+        if unknown or truck_tara is None:
             neto = None
         else:
             neto = bruto_out - truck_tara - tara_sum
