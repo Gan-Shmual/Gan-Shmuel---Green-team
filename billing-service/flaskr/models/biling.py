@@ -10,9 +10,6 @@ class Provider(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
-    rates: Mapped[list["Rate"]] = relationship("Rate", back_populates="provider")
-    trucks: Mapped[list["Truck"]] = relationship("Truck", back_populates="provider")
-
 
 class Rate(db.Model):
     __tablename__ = "Rates"
@@ -21,17 +18,9 @@ class Rate(db.Model):
     rate: Mapped[int] = mapped_column(Integer)  # stored in agorot (int)
     scope: Mapped[str] = mapped_column(String(50))  # "ALL" or provider.id
 
-    provider_id: Mapped[int | None] = mapped_column(
-        ForeignKey("Provider.id"), nullable=True
-    )
-
-    provider: Mapped["Provider"] = relationship("Provider", back_populates="rates")
-
 
 class Truck(db.Model):
     __tablename__ = "Trucks"
 
     id: Mapped[str] = mapped_column(String(10), primary_key=True)  # License plate
     provider_id: Mapped[int] = mapped_column(ForeignKey("Provider.id"))
-
-    provider: Mapped["Provider"] = relationship("Provider", back_populates="trucks")
