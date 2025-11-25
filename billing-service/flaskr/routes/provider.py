@@ -19,14 +19,15 @@ def create_provider():
     return jsonify({'id': new_provider.id}), 201
 
 @provider.put('/provider/<int:id>')
-def update_provider(provider_id):
+def update_provider(id):
     data = request.get_json()
     new_name = data.get('name')
     if new_name == None:
         return jsonify({'error': 'Provider name is required'}), 400
-    provider = Provider.query.get(provider_id)
+    provider = Provider.query.get(id)
     if not provider:
         return jsonify({'error': 'Provider not found'}), 404
     provider.name = new_name
     db.session.commit()
+    return jsonify({'id': provider.id, 'name': provider.name}), 200
 
