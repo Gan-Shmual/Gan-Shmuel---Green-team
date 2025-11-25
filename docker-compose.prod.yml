@@ -1,72 +1,83 @@
-include:
-  - billing-service/docker-compose.yml
-  - weight-service/docker-compose.yml
-
 services:
   db:
+    image: mysql:8.0
     container_name: billing-db-production
+    restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=${BILLING_DB_PASSWORD}
-      - MYSQL_DATABASE=billing_prod
-      - MYSQL_TCP_PORT=3306
+      - MYSQL_DATABASE=${BILLING_DB_NAME}
+      - MYSQL_TCP_PORT=${BILLING_DB_PORT}
+    volumes:
+      - billing-data:/var/lib/mysql
+      - ./billing-service/data/init:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
     networks:
       - prod-network
-    restart: unless-stopped
-    volumes:
-      - billing-data:/var/lib/mysql
-      - ./billing-service/data/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${BILLING_DB_PASSWORD}"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
 
   billing-service:
+    build: ./billing-service
     container_name: billing-service-prod
     ports:
       - "8081:5001"
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       - ENV=production
-      - DB_USER=root
+      - DB_HOST=db
+      - DB_USER=${BILLING_DB_USER}
       - DB_PASSWORD=${BILLING_DB_PASSWORD}
-      - DB_NAME=billing_prod
-      - DB_PORT=3306
-      - WEIGHTS_PORT=5000
+      - DB_NAME=${BILLING_DB_NAME}
+      - DB_PORT=${BILLING_DB_PORT}
+      - WEIGHTS_PORT=${WEIGHTS_PORT}
+      - APP_PORT=${APP_PORT}
       - WEIGHTS_HOST=weight-service
-      - APP_PORT=5001
+    volumes:
+      - ./billing-service/data/in:/app/in
     networks:
       - prod-network
     restart: unless-stopped
-    volumes:
-      - ./billing-service/data/in:/app/in
     
   weight-db:
+    image: mysql:8.0
     container_name: weight_db_prod
-    environment:
-      - MYSQL_ROOT_PASSWORD=${WEIGHT_DB_PASSWORD}
-      - MYSQL_DATABASE=weight_prod
-      - MYSQL_TCP_PORT=3306
+    env_file:
+      - .env
+    volumes:
+      - weight-data:/var/lib/mysql
+      - ./weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "3309:3306"
     networks:
       - prod-network
     restart: unless-stopped
-    volumes:
-      - weight-data:/var/lib/mysql
-      - ./weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   
   weight-service:
+    build: ./weight-service
     container_name: weight-service-prod
     ports:
       - "8082:5000"
-    environment:
-      - MYSQL_HOST=weight-db
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=${WEIGHT_DB_PASSWORD}
-      - MYSQL_DATABASE=weight_prod
-      - MYSQL_PORT=3306
+    depends_on:
+      weight-db:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./weight-service/in:/app/in
     networks:
       - prod-network
     restart: unless-stopped
-    volumes:
-      - ./weight-service/in:/app/in
   
   monitor:
     build: ./monitor
