@@ -63,5 +63,5 @@ def download_rates():
     return send_file(
         LATEST,
         as_attachment=True,
-        download_name="rates.xlsx"
+        download_name="rates_latest.xlsx"
     )
