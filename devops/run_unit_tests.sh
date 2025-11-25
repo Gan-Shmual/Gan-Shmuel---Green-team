@@ -27,11 +27,11 @@ else
 fi
 
 #run weight unit tests in backgroud
-if [ -d "$REPO_DIR/weight-service/tests" ]; then
+if [ -d "$REPO_DIR/Weight_service/tests" ]; then
     log "Starting weight unit tests..."
     (
         set +e
-        cd "$REPO_DIR/weight-service"
+        cd "$REPO_DIR/Weight_service"
         pytest tests/ -v > /tmp/weight_test_output.log 2>&1
         echo $? > /tmp/weight_test_result
     ) &

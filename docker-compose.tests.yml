@@ -1,19 +1,81 @@
 include:
-  - ./Weight_service/docker-compose.yml
-  - ./billing-service/docker-compose.yml
+  - weight-service/docker-compose.yml
+  - billing-service/docker-compose.yml
+
 services:
+  db:
+    container_name: billing-db-test
+    environment:
+      - MYSQL_ROOT_PASSWORD=test_billing_pass
+      - MYSQL_DATABASE=billing-test
+      - MYSQL_TCP_PORT=3306
+    ports:
+      - "3307:3306"
+    networks:
+      - test-network
+    volumes:
+      - ./billing-service/data/init:/docker-entrypoint-initdb.d
+
+  billing-service:
+    container_name: billing-service-test
+    ports:
+      - "8088:5001"
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=test_billing_pass
+      - DB_NAME=billing-test
+      - DB_PORT=3306
+      - WEIGHTS_PORT=5000
+      - WEIGHTS_HOST=weight-service
+      - APP_PORT=5001
+    networks:
+      - test-network
+    volumes:
+      - ./billing-service/data/in:/app/in
+  
+  weight-db:
+    container_name: weight-db-test
+    environment:
+      - MYSQL_ROOT_PASSWORD=test_weight_pass
+      - MYSQL_DATABASE=weight_test
+      - MYSQL_TCP_PORT=3306
+    ports:
+      - "3308:3306"
+    networks:
+      - test-network
+    volumes:
+      - ./weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
+  
+  weight-service:
+    container_name: weight-service-test
+    ports:
+      - "8089:5000"
+    environment:
+      - MYSQL_HOST=weight-db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=test_weight_pass
+      - MYSQL_DATABASE=weight_test
+      - MYSQL_PORT=3306
+    networks:
+      - test-network
+    volumes:
+      - ./weight-service/in:/app/in
+
   test-runner:
     build: ./tests
     container_name: test-runner
     depends_on:
-    - weight-app
-    - weight-db
-    - billing-service
-    - db #billing db name
-
-  
+      - weight-service
+      - billing-service
+    networks:
+      - test-network
     volumes:
       - ./tests:/tests
     command: pytest /tests -v
+
+networks:
+  test-network:
+    driver: bridge
 
 

@@ -14,7 +14,7 @@ COPY ci_service.py .
 COPY ci_pipeline.sh .
 COPY run_unit_tests.sh .
 COPY run_integartion_tests.sh .
-COPY deploy .
+COPY deploy.sh .
 COPY rollback.sh .
 COPY send_email.py .
 COPY github_api.py .
