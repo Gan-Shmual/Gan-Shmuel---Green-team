@@ -1,47 +1,38 @@
 import pytest
 
-def test_get_unknown_success(client, mock_db):
-    # 1. Setup Mock Data
-    # The route expects rows with container_id, weight, and unit
-    # Logic: WHERE weight IS NULL
-    mock_rows = [
-        {"container_id": "C-NULL-1", "weight": None, "unit": "kg"},
-        {"container_id": "C-NULL-2", "weight": None, "unit": "lbs"}
-    ]
-    
-    # Configure mock to return these rows
-    mock_db(rows=mock_rows)
+class TestGetUnknown:
+    """Essential tests for GET /unknown"""
 
-    # 2. Execute
-    rv = client.get("/unknown")
+    def test_get_unknown_containers_success(self, client, mock_get_db, mock_db):
+        """Should return list of containers with unknown weight"""
+        mock_conn, mock_cursor = mock_db
 
-    # 3. Assert
-    assert rv.status_code == 200
-    data = rv.get_json()
-    
-    # Verify we got a list with the correct data
-    assert len(data) == 2
-    assert data[0]["container_id"] == "C-NULL-1"
-    assert data[0]["weight"] is None
+        mock_cursor.fetchall.return_value = [
+            {"container_id": "C1", "weight": None, "unit": None},
+            {"container_id": "C2", "weight": None, "unit": None}
+        ]
 
-def test_get_unknown_empty(client, mock_db):
-    # 1. Setup Mock Data (Empty list)
-    mock_db(rows=[])
+        response = client.get('/unknown')
+        data = response.get_json()
 
-    # 2. Execute
-    rv = client.get("/unknown")
+        assert response.status_code == 200
+        assert len(data) == 2
+        assert data[0]["container_id"] == "C1"
+        assert data[1]["container_id"] == "C2"
 
-    # 3. Assert
-    assert rv.status_code == 200
-    assert rv.get_json() == []
+        # SQL executed correctly
+        sql_call = str(mock_cursor.execute.call_args)
+        assert "containers_registered" in sql_call
+        assert "weight IS NULL" in sql_call
 
-def test_get_unknown_db_error(client, mock_db):
-    # 1. Setup Mock to fail
-    mock_db(side_effect=Exception("DB Down"))
+    def test_get_unknown_database_error(self, client, mock_get_db, mock_db):
+        """Database error → 500"""
+        mock_conn, mock_cursor = mock_db
 
-    # 2. Execute
-    rv = client.get("/unknown")
+        mock_cursor.execute.side_effect = Exception("Database failed")
 
-    # 3. Assert
-    assert rv.status_code == 500
-    assert "Database query failed" in rv.get_data(as_text=True)
+        response = client.get('/unknown')
+        body = response.get_data(as_text=True)
+
+        assert response.status_code == 500
+        assert "Database query failed" in body

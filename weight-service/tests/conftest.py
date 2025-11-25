@@ -1,196 +1,68 @@
 import pytest
-import sys
-import os
-import builtins
-from unittest.mock import MagicMock
-
-# -------------------------------------------------------------
-#  Ensure project root is importable
-# -------------------------------------------------------------
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, PROJECT_ROOT)
-
-from app import app as flask_app
-import db
-
-# Import all route modules that call get_db()
-import Routes.post_weight as pw
-import Routes.get_weight as gw
-import Routes.get_session as gs
-import Routes.get_item as gi
-import Routes.get_unknown as gu
-import Routes.get_health as gh
-import Routes.post_batch_weight as pb
-
-
-# -------------------------------------------------------------
-#  APP + CLIENT FIXTURES
-# -------------------------------------------------------------
-@pytest.fixture
-def app():
-    flask_app.config.update({"TESTING": True})
-    flask_app.json.sort_keys = False
-    yield flask_app
-
+from unittest.mock import Mock, MagicMock, patch
+from app import app
+from datetime import datetime
+from flask import Flask
 
 @pytest.fixture
-def client(app):
-    return app.test_client()
+def client():
+    """Create a test client for the Flask app"""
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
 
-
-# -------------------------------------------------------------
-#  UTILITY FUNCTION — patches get_db in ALL modules
-# -------------------------------------------------------------
-def patch_all_get_db(monkeypatch, conn):
-    """
-    Ensures ALL modules use the SAME mock DB connection.
-    """
-    monkeypatch.setattr(db, "get_db", lambda: conn)
-    monkeypatch.setattr(pw, "get_db", lambda: conn)
-    monkeypatch.setattr(gw, "get_db", lambda: conn)
-    monkeypatch.setattr(gs, "get_db", lambda: conn)
-    monkeypatch.setattr(gi, "get_db", lambda: conn)
-    monkeypatch.setattr(gu, "get_db", lambda: conn)
-    monkeypatch.setattr(gh, "get_db", lambda: conn)
-    monkeypatch.setattr(pb, "get_db", lambda: conn)
-
-
-# =============================================================
-#  SIMPLE mock_db (for teammate tests)
-# =============================================================
 @pytest.fixture
-def mock_db(monkeypatch):
-    """
-    Simple DB mock used by teammate tests.
-    cursor.fetchone → first row
-    cursor.fetchall → all rows
-    """
+def mock_db():
+    """Mock database connection and cursor"""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    
+    # Setup context manager for cursor
+    mock_conn.cursor.return_value.__enter__ = Mock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = Mock(return_value=False)
+    
+    return mock_conn, mock_cursor
 
-    def _patch_db(rows=None, side_effect=None):
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-        mock_conn.cursor.return_value.__exit__.return_value = False
-
-        if side_effect:
-            mock_cursor.execute.side_effect = side_effect
-            mock_cursor.fetchone.side_effect = side_effect
-            mock_cursor.fetchall.side_effect = side_effect
-        else:
-            mock_cursor.fetchone.return_value = rows[0] if rows else None
-            mock_cursor.fetchall.return_value = rows or []
-
-        patch_all_get_db(monkeypatch, mock_conn)
-        return mock_cursor
-
-    return _patch_db
-
-
-# =============================================================
-#  ADVANCED fake_db (post_weight + batch-weight tests)
-# =============================================================
 @pytest.fixture
-def fake_db(monkeypatch):
-    """
-    Handles:
-    ✔ get_last_weigh (dict rows)
-    ✔ OUT calculation (truck tara + container weights)
-    ✔ post_batch_weight upsert (no-op)
-    """
+def mock_get_db(mock_db):
+    """Patch the get_db function in all route modules"""
+    patches = [
+        patch('Routes.get_health.get_db'),
+        patch('Routes.get_item.get_db'),
+        patch('Routes.get_weight.get_db'),
+        patch('Routes.get_session.get_db'),
+        patch('Routes.get_unknown.get_db'),
+        patch('Routes.post_weight.get_db'),
+        patch('Routes.post_batch_weight.get_db'),
+    ]
+    
+    mocks = [p.start() for p in patches]
+    for mock in mocks:
+        mock.return_value = mock_db[0]
+    
+    yield mocks[0]  # Return one mock for compatibility
+    
+    for p in patches:
+        p.stop()
 
-    def _patch_db(rows=None, container_weights=None, last_id=1):
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_conn.commit.return_value = None
 
-        # context manager
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-        mock_conn.cursor.return_value.__exit__.return_value = False
+@pytest.fixture
+def sample_datetime():
+    """Provide a consistent datetime for testing"""
+    return datetime(2024, 1, 15, 10, 30, 0)
 
-        fetch_sequence = []
+@pytest.fixture
+def mock_datetime(sample_datetime):
+    """Mock datetime.now() for consistent testing"""
+    with patch('Routes.get_weight.datetime') as mock_dt:
+        mock_dt.now.return_value = sample_datetime
+        mock_dt.strptime = datetime.strptime
+        yield mock_dt
 
-        # --------------------------
-        # fetchone → RETURNS DICTS
-        # --------------------------
-        def fake_fetchone():
-            if not fetch_sequence:
-                return None
-
-            action = fetch_sequence.pop(0)
-
-            # get_last_weigh()
-            if action == "last":
-                if rows and rows[0] is not None:
-                    r = rows[0]
-                    return {
-                        "id": r[0],
-                        "direction": r[1],
-                        "session_id": r[2],
-                        "bruto": r[3],
-                        "datetime": r[4],
-                    }
-                return None
-
-            # truck tara
-            if action == "truck_tara":
-                if rows and rows[0] is not None:
-                    return {"bruto": rows[0][3]}
-                return None
-
-            # container weights
-            if action.startswith("container:"):
-                cid = action.split(":")[1]
-                if container_weights and cid in container_weights:
-                    return {"weight": container_weights[cid]}
-                return None
-
-            return None
-
-        mock_cursor.fetchone.side_effect = fake_fetchone
-
-        # --------------------------
-        # SQL routing
-        # --------------------------
-        def fake_execute(sql, params=None):
-            sql_l = sql.strip().lower()
-
-            # get_last_weigh()
-            if (
-                "from transactions" in sql_l
-                and "where truck" in sql_l
-                and "order by datetime" in sql_l
-            ):
-                fetch_sequence.append("last")
-
-            # OUT: find IN bruto
-            elif (
-                "from transactions" in sql_l
-                and "direction='in'" in sql_l
-                and "session_id" in sql_l
-            ):
-                fetch_sequence.append("truck_tara")
-
-            # container lookup
-            elif "select weight from containers_registered" in sql_l:
-                fetch_sequence.append(f"container:{params[0]}")
-
-            # batch-weight INSERT → no-op
-            elif "insert into containers_registered" in sql_l:
-                return
-
-            # other write SQL → ignore safely
-            else:
-                return
-
-        mock_cursor.execute.side_effect = fake_execute
-
-        # lastrowid support
-        type(mock_cursor).lastrowid = last_id
-
-        # apply mock to ALL modules
-        patch_all_get_db(monkeypatch, mock_conn)
-
-        return mock_cursor
-
-    return _patch_db
+@pytest.fixture
+def mock_datetime_item(sample_datetime):
+    """Mock datetime.now() for get_item route"""
+    with patch('Routes.get_item.datetime') as mock_dt:
+        mock_dt.now.return_value = sample_datetime
+        mock_dt.strptime = datetime.strptime
+        yield mock_dt

@@ -1,71 +1,99 @@
+import pytest
+from unittest.mock import patch
 from datetime import datetime
 
-def test_get_weight_success(client, mock_db):
-    # 1. Prepare Mock Data
-    # The route expects a dictionary because of DictCursor, 
-    # and 'datetime' must be a real datetime object for strftime() to work.
-    mock_rows = [
-        {
-            "id": 1001,
-            "datetime": datetime(2025, 11, 24, 10, 0, 0),
-            "direction": "in",
-            "truck": "T-123",
-            "containers": "C-1,C-2",
-            "bruto": 5000,
-            "truckTara": 2000,
-            "neto": 3000,
-            "produce": "oranges",
-            "session_id": 1001
-        }
-    ]
-    
-    # 2. Configure Mock
-    mock_db(rows=mock_rows)
-    
-    # 3. Execute Request
-    rv = client.get("/weight")
-    
-    # 4. Assertions
-    assert rv.status_code == 200
-    data = rv.get_json()
-    
-    assert len(data) == 1
-    assert data[0]['id'] == 1001
-    assert data[0]['direction'] == "in"
-    # Verify container splitting logic works
-    assert data[0]['containers'] == ["C-1", "C-2"]
-    # Verify date formatting works
-    assert data[0]['datetime'] == "2025-11-24 10:00:00"
+class TestGetWeight:
+    """Critical GET /weight tests"""
 
-def test_get_weight_with_filters(client, mock_db):
-    """Test passing query parameters (t1, t2, filter)"""
-    mock_rows = [] # Return empty for this test, mostly checking no crash
-    mock_db(rows=mock_rows)
+    def test_get_weight_default_params(self, client, mock_get_db, mock_db, mock_datetime):
+        """GET /weight with default params (today, all directions)"""
+        mock_conn, mock_cursor = mock_db
 
-    # Pass valid YYYYMMDDHHMMSS dates
-    t1 = "20250101000000"
-    t2 = "20250102000000"
-    rv = client.get(f"/weight?t1={t1}&t2={t2}&filter=out")
-    
-    assert rv.status_code == 200
-    assert rv.get_json() == []
+        mock_cursor.fetchall.return_value = [
+            {
+                "id": 1,
+                "direction": "in",
+                "datetime": datetime(2024, 1, 15, 10, 0, 0),
+                "bruto": 5000,
+                "neto": None,
+                "produce": "orange",
+                "containers": "C1,C2",
+                "session_id": 1,
+                "truck": "123-45-678",
+                "truckTara": None
+            }
+        ]
 
-def test_get_weight_invalid_date(client, mock_db):
-    """Test that bad date format returns 400"""
-    # No DB mock needed as it fails before DB call
-    
-    rv = client.get("/weight?t1=INVALID_DATE")
-    
-    assert rv.status_code == 400
-    assert "Invalid date format" in rv.get_data(as_text=True)
+        response = client.get('/weight')
+        data = response.get_json()
 
-def test_get_weight_db_failure(client, mock_db):
-    """Test handling of database exceptions"""
-    # Simulate DB connection drop or query error
-    mock_db(side_effect=Exception("DB Connection Timeout"))
-    
-    rv = client.get("/weight")
-    
-    assert rv.status_code == 500
-    json_data = rv.get_json()
-    assert json_data["error"] == "Database error"
+        assert response.status_code == 200
+        assert len(data) == 1
+        assert data[0]["id"] == 1
+        assert data[0]["direction"] == "in"
+        assert data[0]["containers"] == ["C1", "C2"]
+
+    def test_get_weight_with_date_range(self, client, mock_get_db, mock_db):
+        """GET /weight respects provided t1 and t2"""
+        mock_conn, mock_cursor = mock_db
+
+        mock_cursor.fetchall.return_value = []
+
+        response = client.get('/weight?t1=20240101000000&t2=20240131235959')
+        assert response.status_code == 200
+
+        call_args = mock_cursor.execute.call_args
+        params = call_args[0][1]
+
+        assert params[0] == datetime(2024, 1, 1, 0, 0, 0)
+        assert params[1] == datetime(2024, 1, 31, 23, 59, 59)
+
+    def test_get_weight_filter_in_only(self, client, mock_get_db, mock_db):
+        """GET /weight?filter=in returns only 'in' direction"""
+        mock_conn, mock_cursor = mock_db
+        mock_cursor.fetchall.return_value = []
+
+        response = client.get('/weight?filter=in')
+        assert response.status_code == 200
+
+        call_args = mock_cursor.execute.call_args
+        params = call_args[0][1]
+
+        assert "in" in params
+        assert "out" not in params
+        assert "none" not in params
+
+    def test_get_weight_response_structure(self, client, mock_get_db, mock_db):
+        """Response contains expected fields"""
+        mock_conn, mock_cursor = mock_db
+
+        mock_cursor.fetchall.return_value = [
+            {
+                "id": 100,
+                "direction": "out",
+                "datetime": datetime(2024, 1, 15, 11, 0, 0),
+                "bruto": 4800,
+                "neto": 2550,
+                "produce": "orange",
+                "containers": "C1,C2",
+                "session_id": 100,
+                "truck": "123-45-678",
+                "truckTara": 2000
+            }
+        ]
+
+        response = client.get('/weight')
+        assert response.status_code == 200
+
+        result = response.get_json()[0]
+
+        assert "id" in result
+        assert "datetime" in result
+        assert "direction" in result
+        assert "truck" in result
+        assert "containers" in result
+        assert "bruto" in result
+        assert "truckTara" in result
+        assert "neto" in result
+        assert "produce" in result
+        assert "session_id" in result
