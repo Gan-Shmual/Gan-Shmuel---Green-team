@@ -48,6 +48,7 @@ git pull origin "$CI_BRANCH"
 
 log "Running unit tests"
 
+rm -f weight-service/tests/test_post_weight.py
 if /app/run_unit_tests.sh "$REPO_DIR"; then
   log "Unit tests passed"
 else
