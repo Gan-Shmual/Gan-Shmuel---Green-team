@@ -1,3 +1,0 @@
-include:
-  - ./Weight_service/docker-compose.yml
-  - ./billing-service/docker-compose.yml
