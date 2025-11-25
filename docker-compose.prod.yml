@@ -11,7 +11,7 @@ services:
       - billing-data:/var/lib/mysql
       - ./billing-service/data/init:/docker-entrypoint-initdb.d
     ports:
-      - "3306:3306"
+      - "3307:3306"
     networks:
       - prod-network
     healthcheck:
@@ -90,6 +90,8 @@ services:
       - weight-service
     networks:
       - prod-network
+    environment:
+      - TZ=Asiz/Jerusalem
 
 networks:
   prod-network:
