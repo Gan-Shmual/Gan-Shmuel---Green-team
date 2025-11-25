@@ -15,7 +15,7 @@ services:
   
     volumes:
       - ./tests:/tests
-    command: ./init.sh
+    command: ./tests/init.sh
   
       
 

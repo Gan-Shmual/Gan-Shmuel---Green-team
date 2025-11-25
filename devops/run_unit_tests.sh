@@ -8,10 +8,13 @@ log() {
     echo "[UNIT-TESTS $(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+python3 -m pip install --upgrade pip 
+pip install pymysql
 log "Running unit tests in parallel..."
 
 #run billing unit tests in background
 if [ -d "$REPO_DIR/billing-service/tests" ]; then
+    log "Installing billing-service dependencies..."
     log "Starting billing unit tests..."
     (
         set +e
@@ -28,6 +31,7 @@ fi
 
 #run weight unit tests in backgroud
 if [ -d "$REPO_DIR/weight-service/tests" ]; then
+    log "Installing weight-service dependencies..."
     log "Starting weight unit tests..."
     (
         set +e
