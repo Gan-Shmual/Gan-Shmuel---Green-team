@@ -82,7 +82,7 @@ def get_bill(id):
         products_dict = {}
         session_count = 0
         
-        for session in weight_data:
+        for session in weight_data.json():
             truck_id = session.get('truck')
             
             # Skip if not this provider's truck
@@ -115,7 +115,9 @@ def get_bill(id):
         total_pay = 0
         
         for product, data in products_dict.items():
-            rate = get_rate_for_product(product, provider.id)
+            rate = get_rate_for_product(product, provider.id) 
+            print(f"rate: {rate}", flush=True)
+            print(data['amount'], flush=True)
             pay = data['amount'] * rate
             total_pay += pay
             
