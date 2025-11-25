@@ -25,13 +25,13 @@ def upsert_container(container_id, weight, unit):
     conn = get_db()
     with conn.cursor() as cur:
         sql = """
-            INSERT INTO containers_registered (container_id, weight, unit)
-            VALUES (%s, %s, %s)
+            INSERT INTO containers (id, weight)
+            VALUES (%s, %s)
             ON DUPLICATE KEY UPDATE
-                weight = VALUES(weight),
-                unit = VALUES(unit);
+                weight = VALUES(weight);
         """
-        cur.execute(sql, (container_id, weight, unit))
+        # Note: Schema only has 'weight' (int kg), not 'unit' column based on previous schema
+        cur.execute(sql, (container_id, weight))
     conn.commit()
 
 ###############################################
@@ -121,39 +121,57 @@ def process_json(filepath):
 ###############################################
 @post_batch_bp.route('/batch-weight', methods=['POST'])
 def post_batch_weight():
-    data = request.get_json() or request.form
-
-    if "file" not in data:
-        return jsonify({"error": "Missing required field: file"}), 400
-
-    filename = data["file"].strip()
-    filepath = f"/app/in/{filename}"
-
-    ext = filename.lower().split(".")[-1]
-    # check extnesion
-    if ext not in ["csv", "json"]:
-        return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
-
-    if not os.path.isfile(filepath):
-        return jsonify({"error": f"File '{filename}' not found in /in"}), 404
+    filename = None
+    filepath = None
     
     try:
+        # 1. Check if a file is uploaded via Multipart/Form-Data (UI)
+        if 'file' in request.files:
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({"error": "No selected file"}), 400
+            
+            filename = file.filename
+            # Save file to /app/in/
+            filepath = os.path.join('/app/in', filename)
+            
+            # Ensure directory exists
+            os.makedirs('/app/in', exist_ok=True)
+            file.save(filepath)
+
+        # 2. Check if filename is provided in JSON/Form (API)
+        else:
+            data = request.get_json(silent=True) or request.form
+            if data and "file" in data:
+                filename = data["file"].strip()
+                filepath = f"/app/in/{filename}"
+            else:
+                return jsonify({"error": "Missing required field: file (binary or filename string)"}), 400
+
+        # 3. Validate File Existence and Format
+        if not filename or not filepath:
+            return jsonify({"error": "Could not determine file"}), 400
+
+        ext = filename.lower().split(".")[-1]
+        if ext not in ["csv", "json"]:
+            return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
+
+        if not os.path.isfile(filepath):
+            return jsonify({"error": f"File '{filename}' not found in /in"}), 404
+        
+        # 4. Process File
         if ext == "csv":
             processed, errors = process_csv(filepath)
-
         elif ext == "json":
             processed, errors = process_json(filepath)
 
-        else:
-            return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
+        return jsonify({
+            "file": filename,
+            "processed": processed,
+            "errors": errors
+        }), 200
 
     except Exception as e:
         print("!!! ERROR in /batch-weight !!!")
         traceback.print_exc()
-        return jsonify({"error": f"Internal error while processing file: {str(e)}"}), 500
-
-    return jsonify({
-        "file": filename,
-        "processed": processed,
-        "errors": errors
-    }), 200
+        return jsonify({"error": f"Internal error: {str(e)}"}), 500
