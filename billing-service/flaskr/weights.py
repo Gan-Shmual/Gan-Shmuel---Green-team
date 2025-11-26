@@ -4,7 +4,7 @@ weights_port = None
 weights_host = None
 
 def from_weights(endpoint, data):
-    response = requests.get(f'http://{weights_host}:{weights_port}/{endpoint}', params=data)
+    response = requests.get(f'http://{weights_host}:{weights_port}/api/{endpoint}', params=data)
     if response.status_code == 200:
         return response
     else:
@@ -18,4 +18,4 @@ def init_weights(app):
         status = from_weights('health', {})
         print(f'weights service is up: {status}')
     except Exception:
-        print(f'Failed to connect to weights service. http://{weights_host}:{weights_port}/health')
+        print(f'Failed to connect to weights service. http://{weights_host}:{weights_port}/api/health')
