@@ -90,26 +90,40 @@ log "All tests passed! Proceeding to production deployment..."
 
 #create and merge pull request
 log "Creating Pull Request: $CI_BRANCH -> main..."
-PR_NUMBER=$(python3 /app/github_api.py create 2>&1 | grep -oP '(?<=Pull Request created: #)\d+' | head -1)
+PR_OUTPUT=$(python3 /app/github_api.py create 2>&1)
 
-if [ -z "$PR_NUMBER" ]; then
-  PR_NUMBER=$(python3 /app/github_api.py create 2>&1 | grep -oP '(?<=Found existing PR: #)\d+' | head -1)
+# Check if branches are in sync
+if echo "$PR_OUTPUT" | grep -q "Branches in sync: -1"; then
+  PR_NUMBER="-1"
+else
+  # Try to extract PR number from creation message
+  PR_NUMBER=$(echo "$PR_OUTPUT" | grep -oP '(?<=Pull Request created: #)\d+' | head -1)
+
+  # If not found, try to extract from existing PR message
+  if [ -z "$PR_NUMBER" ]; then
+    PR_NUMBER=$(echo "$PR_OUTPUT" | grep -oP '(?<=Found existing PR: #)\d+' | head -1)
+  fi
 fi
 
 if [ -n "$PR_NUMBER" ]; then
-  log "Pull Request #$PR_NUMBER created/found"
-  sleep 3
-
-  log "Auto-merging Pull Request #$PR_NUMBER..."
-  if python3 /app/github_api.py merge $PR_NUMBER; then
-    log "Pull Request merged successfully"
+  # Check if PR_NUMBER is -1 (branches already in sync)
+  if [ "$PR_NUMBER" = "-1" ]; then
+    log "No PR needed - branches are already in sync"
   else
-    log "Failed to merge Pull Request"
-    send_notification "failure" "Pull Request #$PR_NUMBER could not be merged automatically.
+    log "Pull Request #$PR_NUMBER created/found"
+    sleep 3
+
+    log "Auto-merging Pull Request #$PR_NUMBER..."
+    if python3 /app/github_api.py merge $PR_NUMBER; then
+      log "Pull Request merged successfully"
+    else
+      log "Failed to merge Pull Request"
+      send_notification "failure" "Pull Request #$PR_NUMBER could not be merged automatically.
 
 Please check for merge conflicts at:
 https://github.com/Gan-Shmual/Gan-Shmuel---Green-team/pull/$PR_NUMBER"
-    exit 1
+      exit 1
+    fi
   fi
 else
   log "Failed to create Pull Request"
@@ -118,6 +132,9 @@ else
 fi
 
 log "Move to local 'main' branch after merge..."
+# Discard any local changes made during testing (e.g., modified docker-compose files)
+git reset --hard HEAD
+git clean -fd
 git fetch origin
 git checkout main
 git pull origin main

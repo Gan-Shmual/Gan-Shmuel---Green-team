@@ -54,7 +54,8 @@ def webhook():
 
 @app.post("/trigger")
 def trigger():
-    payload = request.get_json()
+    payload = request.get_json(silent=True)
+    print("[CI] Manual trigger received")
     try:
         subprocess.check_call(["./ci_pipeline.sh"])
         return jsonify({"status": "Success"}), 200
