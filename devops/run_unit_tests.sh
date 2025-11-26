@@ -3,6 +3,7 @@
 
 ###test##
 ###test2###
+###test3###
 set -e
 REPO_DIR=${1:-/workspace/Gan-Shmuel---Green-team}
 
