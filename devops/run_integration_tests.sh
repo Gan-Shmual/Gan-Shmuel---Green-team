@@ -21,6 +21,25 @@ docker compose -f "$COMPOSE_FILE" up -d --build
 log "Test environment built successfully"
 
 log "Waiting for services to start..."
+
+timeout=60
+elapsed=0
+while [ $elapsed -lt $timeout ]; do
+    if docker compose -f "$COMPOSE_FILE" ps | grep -q "unhealthy\starting"; then
+        log "Services still starting... (${elapsed}s elapsed)"
+        sleep 5
+        elapsed=$((elapsed +5))
+    else
+        log "All services are healthy!"
+        break
+    fi
+done
+
+if [ $elapsed -ge $timeout ]; then
+    log "WARNING: Services did not become healthy within $timeout seconds"
+fi
+
+log "Waiting additional 10 seconds for Flask apps to be ready..."
 sleep 10
 
 #run integarion + e2e tests
