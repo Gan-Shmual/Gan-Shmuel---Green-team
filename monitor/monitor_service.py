@@ -3,8 +3,14 @@ import requests
 import time
 import threading
 from datetime import datetime
+import pytz
 
 app = Flask(__name__)
+
+LOCAL_TZ = pytz.timezone('Asia/Jerusalem')
+
+def get_local_time():
+    return datetime.now(LOCAL_TZ)
 
 #services to monitor
 SERVICES = {
@@ -55,12 +61,12 @@ def check_service_health(service_name, service_config):
     
     current_status[service_name] = {
         "status": status,
-        "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_check": get_local_time().strftime("%Y-%m-%d %H:%M:%S"),
         "response_time": response_time
     }
 
     health_history[service_name].append({
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": get_local_time().strftime("%Y-%m-%d %H:%M:%S"),
         "status": status,
         "response_time": response_time
     })
@@ -87,7 +93,7 @@ def background_health_check():
 def dashboard():
     return render_template("dashboard.html",
                             services=current_status,
-                            last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            last_updated=get_local_time().strftime("%Y-%m-%d %H:%M:%S"))
 
 #monitor service health endpoint
 @app.route("/health")
@@ -99,7 +105,7 @@ def health():
 def api_status():
     return jsonify({
         "services": current_status,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp": get_local_time().strftime("%Y-%m-%d %H:%M:%S")
     })
 
 #get status of a specific service
@@ -110,7 +116,7 @@ def api_service_status(service_name):
     return jsonify({
         "service": service_name,
         "status": current_status[service_name],
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp": get_local_time().strftime("%Y-%m-%d %H:%M:%S")
     })
 
 #get health history of a specific service
@@ -129,7 +135,7 @@ def api_check_now():
     results = check_all_services()
     return jsonify({
         "results": results,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp": get_local_time().strftime("%Y-%m-%d %H:%M:%S")
     })
 
 #get summary of system health
@@ -150,7 +156,7 @@ def api_summary():
         "healthy_services": healthy_count,
         "total_services": total_count,
         "services": current_status,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp": get_local_time().strftime("%Y-%m-%d %H:%M:%S")
     })
 
 @app.route("/api/rollback", methods=["POST"])
