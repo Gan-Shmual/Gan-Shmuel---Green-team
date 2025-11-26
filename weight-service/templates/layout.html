@@ -4,15 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}Weight Service{% endblock %}</title>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+
+    <!-- Custom CSS -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
     />
+
+    <!-- Tailwind Custom Config -->
     <script>
       tailwind.config = {
         theme: {
@@ -28,27 +36,41 @@
       };
     </script>
   </head>
+
   <body class="h-full flex flex-col">
+
     <!-- Navigation -->
     <nav class="bg-slate-900 text-white shadow-lg">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-          <!-- Left Side: Logo -->
-          <div class="flex items-center">
-            <i class="fas fa-truck-loading text-primary text-2xl mr-3"></i>
+
+          <!-- Left Side: Logo + Icon + Title -->
+          <div class="flex items-center space-x-3">
+
+            <!-- Green Team Logo -->
+            <img
+              src="{{ url_for('static', filename='img/green_team_logo.png') }}"
+              alt="Green Team Logo"
+              class="h-14 w-auto drop-shadow-lg"
+            />
+
+            <!-- Truck Icon -->
+            <i class="fas fa-truck-loading text-primary text-2xl"></i>
+
+            <!-- Title -->
             <h1 class="text-xl font-bold tracking-wide">
               Gan Shmuel <span class="text-primary font-light">Weight</span>
             </h1>
           </div>
 
-          <!-- Right Side: Navigation & Switcher -->
+          <!-- Right Side: Navigation + UI Switcher -->
           <div class="flex items-center">
-            <!-- Internal App Links -->
+
+            <!-- Internal Navigation -->
             <div class="flex items-center space-x-2">
-              {% set nav_classes = "px-3 py-2 rounded-md text-sm font-medium
-              transition-colors duration-200" %} {% set active_classes =
-              "bg-primary text-white shadow-md" %} {% set inactive_classes =
-              "text-gray-300 hover:bg-slate-800 hover:text-white" %}
+              {% set nav_classes = "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200" %}
+              {% set active_classes = "bg-primary text-white shadow-md" %}
+              {% set inactive_classes = "text-gray-300 hover:bg-slate-800 hover:text-white" %}
 
               <a
                 href="{{ url_for('ui.weight_form') }}"
@@ -56,36 +78,42 @@
               >
                 <i class="fas fa-scale-balanced mr-1"></i> Record
               </a>
+
               <a
                 href="{{ url_for('ui.batch_weight') }}"
                 class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.batch_weight' else inactive_classes }}"
               >
                 <i class="fas fa-file-upload mr-1"></i> Batch
               </a>
+
               <a
                 href="{{ url_for('ui.weight_history') }}"
                 class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.weight_history' else inactive_classes }}"
               >
                 <i class="fas fa-history mr-1"></i> History
               </a>
+
               <a
                 href="{{ url_for('ui.item_details') }}"
                 class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.item_details' else inactive_classes }}"
               >
                 <i class="fas fa-clipboard-list mr-1"></i> Item Check
               </a>
+
               <a
                 href="{{ url_for('ui.unknown_containers') }}"
                 class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.unknown_containers' else inactive_classes }}"
               >
                 <i class="fas fa-question-circle mr-1"></i> Unknown
               </a>
+
               <a
                 href="{{ url_for('ui.session_details') }}"
                 class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.session_details' else inactive_classes }}"
               >
                 <i class="fas fa-search mr-1"></i> Search
               </a>
+
               <a
                 href="{{ url_for('ui.health_status') }}"
                 class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.health_status' else inactive_classes }}"
@@ -94,36 +122,34 @@
               </a>
             </div>
 
-            <!-- Toggle Between UIs (New Section) -->
-            <div
-              class="flex items-center space-x-3 ml-6 border-l border-slate-700 pl-4"
-            >
-              <span
-                class="text-xs text-gray-400 uppercase font-semibold tracking-wider"
-                >Switch UI:</span
-              >
+            <!-- Switch UI Buttons -->
+            <div class="flex items-center space-x-3 ml-6 border-l border-slate-700 pl-4">
+              <span class="text-xs text-gray-400 uppercase font-semibold tracking-wider">
+                Switch UI:
+              </span>
+
               <button
                 onclick="window.location.href='http://localhost:5001/'"
                 class="px-3 py-1 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
-                title="Go to Billing Service"
               >
                 Billing
               </button>
+
               <button
                 onclick="window.location.href='http://localhost:5005/'"
                 class="px-3 py-1 rounded-md text-sm font-medium bg-slate-700 text-white border border-slate-600 cursor-default"
-                title="Current Service"
               >
                 Weight
               </button>
+
               <button
                 onclick="window.location.href='http://localhost:8085/'"
                 class="px-3 py-1 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
-                title="Go to Monitor Dashboard"
               >
                 Monitor
               </button>
             </div>
+
           </div>
         </div>
       </div>
@@ -154,19 +180,14 @@
       >
         <div class="flex items-start">
           <div class="flex-shrink-0">
-            <i
-              id="notification-icon"
-              class="fas fa-check-circle text-success text-xl"
-            ></i>
+            <i id="notification-icon" class="fas fa-check-circle text-success text-xl"></i>
           </div>
+
           <div class="ml-3 w-0 flex-1">
-            <p id="notification-title" class="text-sm font-bold text-gray-900">
-              Success
-            </p>
-            <p id="notification-message" class="mt-1 text-sm text-gray-500">
-              Operation completed successfully
-            </p>
+            <p id="notification-title" class="text-sm font-bold text-gray-900">Success</p>
+            <p id="notification-message" class="mt-1 text-sm text-gray-500">Operation completed successfully</p>
           </div>
+
           <div class="ml-4 flex-shrink-0 flex">
             <button
               id="notification-close"
@@ -180,7 +201,9 @@
       </div>
     </div>
 
+    <!-- JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block scripts %}{% endblock %}
+
   </body>
 </html>
