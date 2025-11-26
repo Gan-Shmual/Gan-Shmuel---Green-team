@@ -9,7 +9,7 @@ def wait_for_weight_service(timeout=30):
     start = time.time()
     while True:
         try:
-            r = requests.get(f"{WEIGHT_BASE}/health", timeout=2)
+            r = requests.get(f"{WEIGHT_BASE}/api/health", timeout=2)
             if r.status_code == 200:
                 return
         except requests.exceptions.RequestException:
@@ -23,7 +23,7 @@ def wait_for_weight_service(timeout=30):
 
 def test_weight_health():
     wait_for_weight_service()
-    r = requests.get(f"{WEIGHT_BASE}/health")
+    r = requests.get(f"{WEIGHT_BASE}/api/health")
     assert r.status_code == 200
 
 BILLING_BASE = "http://billing-service:5001"
@@ -55,7 +55,7 @@ def test_session_1001_exists():
     start = time.time()
     while True:
         try:
-            r = requests.get(f"{WEIGHT_BASE}/session/10001", timeout=2)
+            r = requests.get(f"{WEIGHT_BASE}/api/session/10001", timeout=2)
             break
         except requests.exceptions.ConnectionError:
             if time.time() - start > timeout:

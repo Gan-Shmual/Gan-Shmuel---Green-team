@@ -3,27 +3,27 @@ set -e
 
 BASE="weight-service:5000"
 
-curl --location "http://${BASE}/batch-weight" \
+curl --location "http://${BASE}/api/batch-weight" \
 --header 'Content-Type: application/json' \
 --data '{
   "file": "containers1.csv"
 }'
 
-curl --location "http://${BASE}/batch-weight" \
+curl --location "http://${BASE}/api/batch-weight" \
 --header 'Content-Type: application/json' \
 --data '{
   "file": "containers2.csv"
 }'
 
 
-curl --location "http://${BASE}/batch-weight" \
+curl --location "http://${BASE}/api/batch-weight" \
 --header 'Content-Type: application/json' \
 --data '{
   "file": "trucks.json"
 }'
 
 
-curl --location "http://${BASE}/weight" \
+curl --location "http://${BASE}/api/weight" \
 --header 'Content-Type: application/json' \
 --data '{
   "direction": "in",
@@ -36,7 +36,7 @@ curl --location "http://${BASE}/weight" \
 }
 '
 
-curl --location "http://${BASE}/weight" \
+curl --location "http://${BASE}/api/weight" \
 --header 'Content-Type: application/json' \
 --data '{
   "direction": "out",
