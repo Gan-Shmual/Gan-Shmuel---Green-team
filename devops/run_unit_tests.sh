@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-
-####test####
-##test6####
-#####test8###
+##test1###
 
 set -e
 REPO_DIR=${1:-/workspace/Gan-Shmuel---Green-team}
