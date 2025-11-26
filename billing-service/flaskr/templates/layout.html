@@ -43,6 +43,7 @@
 
           <!-- Logo + Title -->
           <div class="flex items-center space-x-3">
+
             <!-- Logo -->
             <img
               src="{{ url_for('static', filename='img/green_team_logo.png') }}"
@@ -116,7 +117,6 @@
                 Weight
               </button>
 
-              <!-- NEW: Monitor Button -->
               <button
                 onclick="window.location.href='http://13.204.230.177:8085/'"
                 class="px-3 py-1 rounded-md text-sm font-medium bg-green-700 text-white hover:bg-green-800 transition"
@@ -127,7 +127,7 @@
             </div>
           </div>
 
-        </div> <!-- END flex justify-between -->
+        </div>
       </div>
     </nav>
 
@@ -145,39 +145,37 @@
       </div>
     </footer>
 
-    <!-- Notification Toast -->
+    <!-- Notification Toast (FIXED) -->
     <div
       id="notification"
-      class="fixed bottom-0 right-0 m-6 hidden z-50 transform transition-all duration-300"
+      class="fixed bottom-4 right-4 hidden z-50 transition-all duration-300"
     >
       <div
-        class="bg-white rounded-lg shadow-xl border-l-4 p-4 max-w-sm"
         id="notification-border"
+        class="bg-white rounded-xl shadow-lg border-l-4 p-4 w-64 flex items-start space-x-3"
       >
-        <div class="flex items-start">
-          <div class="flex-shrink-0">
-            <i id="notification-icon" class="fas fa-check-circle text-success text-xl"></i>
-          </div>
-          <div class="ml-3 w-0 flex-1">
-            <p id="notification-title" class="text-sm font-bold text-gray-900"></p>
-            <p id="notification-message" class="mt-1 text-sm text-gray-500"></p>
-          </div>
-          <div class="ml-4 flex-shrink-0 flex">
-            <button
-              id="notification-close"
-              class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
-            >
-              <span class="sr-only">Close</span>
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
+        <!-- Icon -->
+        <i id="notification-icon" class="fas fa-check-circle text-success text-xl"></i>
+
+        <!-- Text -->
+        <div class="flex-1">
+          <p id="notification-title" class="text-sm font-bold text-gray-900"></p>
+          <p id="notification-message" class="mt-1 text-sm text-gray-600"></p>
         </div>
+
+        <!-- Close -->
+        <button
+          id="notification-close"
+          class="text-gray-400 hover:text-gray-500"
+        >
+          <i class="fas fa-times text-md"></i>
+        </button>
       </div>
     </div>
 
     <!-- JS -->
     <script src="{{ url_for('static', filename='main.js') }}"></script>
-
     {% block scripts %}{% endblock %}
+
   </body>
 </html>
