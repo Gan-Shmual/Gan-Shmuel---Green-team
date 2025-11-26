@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Monitor Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d9ff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .summary {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .summary.healthy { border-left: 5px solid #00ff88; }
+        .summary.degraded { border-left: 5px solid #ffaa00; }
+        .summary.down { border-left: 5px solid #ff4444; }
+
+        .summary h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .status-healthy { color: #00ff88; }
+        .status-degraded { color: #ffaa00; }
+        .status-down { color: #ff4444; }
+        .status-unknown { color: #888; }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .service-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .service-card.healthy { border-left: 5px solid #00ff88; }
+        .service-card.unhealthy { border-left: 5px solid #ff4444; }
+        .service-card.down { border-left: 5px solid #ff4444; }
+        .service-card.timeout { border-left: 5px solid #ffaa00; }
+        .service-card.unknown { border-left: 5px solid #888; }
+        .service-card.error {border-left: 5px solid #ff4444;}
+
+        .service-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .service-status {
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .service-details {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .service-details p {
+            margin: 5px 0;
+        }
+
+        .actions {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #00d9ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #00b8d9;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .indicator.healthy { background: #00ff88; }
+        .indicator.unhealthy { background: #ff4444; }
+        .indicator.down { background: #ff4444; }
+        .indicator.timeout { background: #ffaa00; }
+        .indicator.unknown { background: #888; }
+        .indicator.error {background: #ff4444;}
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Production Monitor Dashboard</h1>
+
+        <div id="summary" class="summary">
+            <h2>Loading...</h2>
+        </div>
+
+        <div class="actions">
+            <button onclick="refreshStatus()">Refresh Now</button>
+            <button onclick="forceCheck()">Force Health Check</button>
+            <button onclick="rollback()" style="background: #ff4444;">ROLLBACK</button>
+        </div>
+
+        <div id="services" class="services-grid">
+            <!-- Services will be loaded here -->
+        </div>
+
+        <p id="last-updated" class="last-updated">Last updated: {{ last_updated }}</p>
+    </div>
+
+    <script>
+        function updateDashboard(data) {
+            // Update summary
+            const summaryDiv = document.getElementById('summary');
+            const services = data.services || {};
+            const healthyCount = Object.values(services).filter(s => s.status === 'healthy').length;
+            const totalCount = Object.keys(services).length;
+
+            let overallStatus, statusClass;
+            if (totalCount === 0) {
+                overallStatus = 'No Services Configured';
+                statusClass = 'unknown';
+            } else if (healthyCount === totalCount) {
+                overallStatus = 'All Systems Operational';
+                statusClass = 'healthy';
+            } else if (healthyCount === 0) {
+                overallStatus = 'System Down';
+                statusClass = 'down';
+            } else {
+                overallStatus = 'Degraded Performance';
+                statusClass = 'degraded';
+            }
+
+            summaryDiv.className = `summary ${statusClass}`;
+            summaryDiv.innerHTML = `
+                <h2 class="status-${statusClass}">${overallStatus}</h2>
+                <p>${healthyCount} of ${totalCount} services healthy</p>
+            `;
+
+            // Update services
+            const servicesDiv = document.getElementById('services');
+            servicesDiv.innerHTML = '';
+
+            const statusColorClassMap = {
+                healthy: 'healthy',
+                unhealthy: 'down',
+                down: 'down',
+                timeout: 'degraded',
+                error: 'error',
+                unknown: 'unknown',
+                
+            };
+
+            for (const [name, status] of Object.entries(services)) {
+                const card = document.createElement('div');
+                card.className = `service-card ${status.status}`;
+
+                const colorClass = statusColorClassMap[status.status] || 'unknown';
+
+                card.innerHTML = `
+                    <div class="service-name">
+                        <span class="indicator ${status.status}"></span>
+                        ${name}
+                    </div>
+                    <div class="service-status status-${colorClass}">
+                        ${status.status}
+                    </div>
+                    <div class="service-details">
+                        <p>Response Time: ${status.response_time ? status.response_time + ' ms' : 'N/A'}</p>
+                        <p>Last Check: ${status.last_check || 'Never'}</p>
+                    </div>
+                `;
+                servicesDiv.appendChild(card);
+            }
+
+            // Update timestamp
+            document.getElementById('last-updated').textContent = `Last updated: ${data.timestamp}`;
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+            }
+        }
+
+        async function forceCheck() {
+            try {
+                const response = await fetch('/api/check');
+                await response.json();
+                refreshStatus();
+            } catch (error) {
+                console.error('Failed to force check:', error);
+            }
+        }
+
+        async function rollback() {
+            if (!confirm('Are you sure you want to rollback to the previous version?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/rollback', {method: 'POST'});
+                const data = await response.json();
+                if (!response.ok || data.status !== 'success'){
+                    alert('Rollback failed: ' + (data.error || 'Unknown error'));
+                } else {
+                    alert('Rollback complete!');
+                }
+                refreshStatus();
+
+            }  catch (error) {
+                alert('Rollback failed: ' + error);
+            }
+        }
+
+        // Initial load
+        refreshStatus();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshStatus, 30000);
+    </script>
+</body>
+</html>
