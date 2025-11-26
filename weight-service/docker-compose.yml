@@ -18,7 +18,7 @@ services:
     volumes:
       # This is the magic part: it automatically runs your schema.sql file
       # when the database container starts for the first time.
-      - weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       # Docker will use this command to check if the DB is ready for connections
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]

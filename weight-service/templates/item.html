@@ -1,0 +1,167 @@
+{% extends "layout.html" %} {% block title %}Item Details - Weight Service{%
+endblock %} {% block content %}
+<div class="max-w-5xl mx-auto">
+  <!-- Filter Card -->
+  <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Item History Lookup</h2>
+    <form id="itemForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div class="md:col-span-1">
+        <label class="block text-xs font-medium text-gray-500 mb-1"
+          >Item ID (Truck/Container)</label
+        >
+        <input
+          type="text"
+          id="itemId"
+          required
+          class="w-full rounded-lg border-gray-300 border p-2 focus:ring-primary focus:border-primary"
+          placeholder="e.g. T-123"
+        />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">From</label>
+        <input
+          type="datetime-local"
+          id="dateFrom"
+          class="w-full rounded-lg border-gray-300 border p-2 focus:ring-primary focus:border-primary"
+        />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">To</label>
+        <input
+          type="datetime-local"
+          id="dateTo"
+          class="w-full rounded-lg border-gray-300 border p-2 focus:ring-primary focus:border-primary"
+        />
+      </div>
+      <div>
+        <button
+          type="submit"
+          class="w-full bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          <i class="fas fa-search mr-2"></i> Get History
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Results -->
+  <div
+    id="resultCard"
+    class="hidden bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+  >
+    <div
+      class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center"
+    >
+      <div>
+        <h3 class="font-bold text-gray-800 text-lg" id="displayId">--</h3>
+        <p class="text-sm text-gray-500">
+          Last Known Tara:
+          <span id="displayTara" class="font-mono font-bold text-gray-700"
+            >--</span
+          >
+        </p>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Session ID
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Action
+            </th>
+          </tr>
+        </thead>
+        <tbody id="sessionsTable" class="bg-white divide-y divide-gray-200">
+          <!-- Rows injected here -->
+        </tbody>
+      </table>
+    </div>
+    <div id="noData" class="hidden p-8 text-center text-gray-500">
+      No sessions found for this period.
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  // Helper to convert HTML datetime-local to YYYYMMDDHHMMSS
+  function toApiDate(isoStr) {
+    if (!isoStr) return "";
+    return isoStr.replace(/[-T:]/g, "") + "00";
+  }
+
+  document.getElementById("itemForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = document.getElementById("itemId").value;
+    const t1 = toApiDate(document.getElementById("dateFrom").value);
+    const t2 = toApiDate(document.getElementById("dateTo").value);
+
+    let url = `/api/item/${id}`;
+    const params = new URLSearchParams();
+    if (t1) params.append("from", t1);
+    if (t2) params.append("to", t2);
+
+    if (Array.from(params).length > 0) url += `?${params.toString()}`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Item not found");
+
+      const data = await res.json();
+
+      document.getElementById("resultCard").classList.remove("hidden");
+      document.getElementById("displayId").textContent = data.id;
+      document.getElementById("displayTara").textContent = data.tara || "N/A";
+
+      const tbody = document.getElementById("sessionsTable");
+      tbody.innerHTML = "";
+
+      if (!data.sessions || data.sessions.length === 0) {
+        document.getElementById("noData").classList.remove("hidden");
+      } else {
+        document.getElementById("noData").classList.add("hidden");
+        data.sessions.forEach((sessId) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${sessId}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <a href="/session-details?id=${sessId}" class="text-primary hover:text-blue-900">View Details</a>
+                    </td>
+                `;
+          tbody.appendChild(tr);
+        });
+      }
+    } catch (err) {
+      document.getElementById("resultCard").classList.add("hidden");
+      showNotification("Error", err.message, "error");
+    }
+  });
+
+  // Set default dates (First of month to Now)
+  document.addEventListener("DOMContentLoaded", () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const formatInput = (d) => {
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 16);
+    };
+
+    document.getElementById("dateTo").value = formatInput(now);
+    document.getElementById("dateFrom").value = formatInput(firstDay);
+  });
+</script>
+{% endblock %}

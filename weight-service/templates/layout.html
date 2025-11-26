@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Weight Service{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#2563eb",
+              secondary: "#1e40af",
+              success: "#10b981",
+              danger: "#ef4444",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="h-full flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-slate-900 text-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <!-- Left Side: Logo -->
+          <div class="flex items-center">
+            <i class="fas fa-truck-loading text-primary text-2xl mr-3"></i>
+            <h1 class="text-xl font-bold tracking-wide">
+              Gan Shmuel <span class="text-primary font-light">Weight</span>
+            </h1>
+          </div>
+
+          <!-- Right Side: Navigation & Switcher -->
+          <div class="flex items-center">
+            <!-- Internal App Links -->
+            <div class="flex items-center space-x-2">
+              {% set nav_classes = "px-3 py-2 rounded-md text-sm font-medium
+              transition-colors duration-200" %} {% set active_classes =
+              "bg-primary text-white shadow-md" %} {% set inactive_classes =
+              "text-gray-300 hover:bg-slate-800 hover:text-white" %}
+
+              <a
+                href="{{ url_for('ui.weight_form') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.weight_form' else inactive_classes }}"
+              >
+                <i class="fas fa-scale-balanced mr-1"></i> Record
+              </a>
+              <a
+                href="{{ url_for('ui.batch_weight') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.batch_weight' else inactive_classes }}"
+              >
+                <i class="fas fa-file-upload mr-1"></i> Batch
+              </a>
+              <a
+                href="{{ url_for('ui.weight_history') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.weight_history' else inactive_classes }}"
+              >
+                <i class="fas fa-history mr-1"></i> History
+              </a>
+              <a
+                href="{{ url_for('ui.item_details') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.item_details' else inactive_classes }}"
+              >
+                <i class="fas fa-clipboard-list mr-1"></i> Item Check
+              </a>
+              <a
+                href="{{ url_for('ui.unknown_containers') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.unknown_containers' else inactive_classes }}"
+              >
+                <i class="fas fa-question-circle mr-1"></i> Unknown
+              </a>
+              <a
+                href="{{ url_for('ui.session_details') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.session_details' else inactive_classes }}"
+              >
+                <i class="fas fa-search mr-1"></i> Search
+              </a>
+              <a
+                href="{{ url_for('ui.health_status') }}"
+                class="{{ nav_classes }} {{ active_classes if request.endpoint == 'ui.health_status' else inactive_classes }}"
+              >
+                <i class="fas fa-heartbeat mr-1"></i> Health
+              </a>
+            </div>
+
+            <!-- Toggle Between UIs (New Section) -->
+            <div
+              class="flex items-center space-x-3 ml-6 border-l border-slate-700 pl-4"
+            >
+              <span
+                class="text-xs text-gray-400 uppercase font-semibold tracking-wider"
+                >Switch UI:</span
+              >
+              <button
+                onclick="window.location.href='http://13.204.230.177:8081'"
+                class="px-3 py-1 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
+                title="Go to Billing Service"
+              >
+                Billing
+              </button>
+              <button
+                onclick="window.location.href='http://13.204.230.177:8082'"
+                class="px-3 py-1 rounded-md text-sm font-medium bg-slate-700 text-white border border-slate-600 cursor-default"
+                title="Current Service"
+              >
+                Weight
+              </button>
+              <button
+                onclick="window.location.href='http://13.204.230.177:8085'"
+                class="px-3 py-1 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+                title="Go to Monitor Dashboard"
+              >
+                Monitor
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-sm text-gray-500">
+          &copy; 2025 Gan Shmuel Weight Systems. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Notification Toast -->
+    <div
+      id="notification"
+      class="fixed bottom-0 right-0 m-6 hidden z-50 transform transition-all duration-300"
+    >
+      <div
+        class="bg-white rounded-lg shadow-xl border-l-4 p-4 max-w-sm"
+        id="notification-border"
+      >
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <i
+              id="notification-icon"
+              class="fas fa-check-circle text-success text-xl"
+            ></i>
+          </div>
+          <div class="ml-3 w-0 flex-1">
+            <p id="notification-title" class="text-sm font-bold text-gray-900">
+              Success
+            </p>
+            <p id="notification-message" class="mt-1 text-sm text-gray-500">
+              Operation completed successfully
+            </p>
+          </div>
+          <div class="ml-4 flex-shrink-0 flex">
+            <button
+              id="notification-close"
+              class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
+            >
+              <span class="sr-only">Close</span>
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
