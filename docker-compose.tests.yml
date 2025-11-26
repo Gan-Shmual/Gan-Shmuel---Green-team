@@ -1,22 +1,19 @@
-version: "3.9"
-
 services:
 
   db:
     image: mysql:8.0
-    container_name: billing-db-production
-    restart: unless-stopped
+    container_name: billing-db-test
     environment:
       - MYSQL_ROOT_PASSWORD=${BILLING_DB_PASSWORD}
       - MYSQL_DATABASE=${BILLING_DB_NAME}
       - MYSQL_TCP_PORT=${BILLING_DB_PORT}
     volumes:
-      - billing-data:/var/lib/mysql
+      - billing-test-data:/var/lib/mysql
       - ./billing-service/data/init:/docker-entrypoint-initdb.d
-    ports:
-      - "3307:3306"
+    #ports:
+    #  - "3307:3306"
     networks:
-      - prod-network
+      - test-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${BILLING_DB_PASSWORD}"]
       interval: 20s
@@ -25,9 +22,9 @@ services:
 
   billing-service:
     build: ./billing-service
-    container_name: billing-service-prod
-    ports:
-      - "8081:5001"
+    container_name: billing-service-test
+    #ports:
+    #  - "8088:5001"
     depends_on:
       db:
         condition: service_healthy
@@ -44,22 +41,20 @@ services:
     volumes:
       - ./billing-service/data/in:/app/in
     networks:
-      - prod-network
-    restart: unless-stopped
+      - test-network
 
   weight-db:
     image: mysql:8.0
-    container_name: weight_db_prod
+    container_name: weight_db_test
     env_file:
       - .env
     volumes:
-      - weight-data:/var/lib/mysql
+      - weight-test-data:/var/lib/mysql
       - ./weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "3309:3306"
+    #ports:
+    #  - "3309:3306"
     networks:
-      - prod-network
-    restart: unless-stopped
+      - test-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -68,9 +63,9 @@ services:
 
   weight-service:
     build: ./weight-service
-    container_name: weight-service-prod
-    ports:
-      - "8082:5000"
+    container_name: weight-service-test
+    #ports:
+    #  - "8089:5000"
     depends_on:
       weight-db:
         condition: service_healthy
@@ -79,8 +74,7 @@ services:
     volumes:
       - ./weight-service/in:/app/in
     networks:
-      - prod-network
-    restart: unless-stopped
+      - test-network
 
   # ---test runner 
   test-runner:
@@ -95,14 +89,14 @@ services:
       - ./tests:/tests
     command: ["/bin/sh", "/tests/init.sh"]
     networks:
-      - prod-network
+      - test-network
 
 networks:
-  prod-network:
+  test-network:
     driver: bridge
 
 volumes:
-  billing-data:
+  billing-test-data:
     driver: local
-  weight-data:
+  weight-test-data:
     driver: local
