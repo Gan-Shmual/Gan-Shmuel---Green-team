@@ -18,6 +18,11 @@ send_notification() {
   python3 /app/send_email.py "CI Pipeline $status" "$message" "$status"
 }
 
+if [ -z "$GITHUB_TOKEN" ]; then
+  log "ERROR: GITHUB_TOKEN is not set"
+  exit 1
+fi
+
 log "using workspace : $WORKDIR"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
@@ -41,40 +46,48 @@ git checkout "$CI_BRANCH"
 log "Pulling latest changes..."
 git pull origin "$CI_BRANCH"
 
-#Test env build and running tests
-log "Building test environment"
+log "Running unit tests"
 
-#to make sure the test env is cleaned up no matter what happens(fail/success)
-trap 'log "Cleaning up test environment..."; docker compose -f docker-compose.tests.yml down -v || true' EXIT 
-docker compose -f docker-compose.tests.yml up -d --build
-
-log "Test environment built successfully"
-
-sleep 10
-
-log "Running automated tests..."
-if docker compose -f docker-compose.tests.yml run --rm test-runner; then
-  log "All tests passed!"
+if /app/run_unit_tests.sh "$REPO_DIR"; then
+  log "Unit tests passed"
 else
-  log "Tests failed"
+  log "Unit tests failed"
 
-  TEST_LOGS=$(docker compose -f docker-compose.tests.yml logs test-runner 2>&1 | tail -100)
-  send_notification "failure" "Tests failed in test environment.
+  FAILURE_REPORT=$(cat /tmp/unit_test_failure_report.txt 2>/dev/null || echo "Check logs for details")
+  
+    send_notification "failure" "Unit tests failed.
+
+Branch: $CI_BRANCH
+Time: $(date)
+
+$FAILURE_REPORT"
+
+    exit 1
+fi
+
+#set up test environment
+log "Running integartion tests..."
+if /app/run_integration_tests.sh "$REPO_DIR" "docker-compose.tests.yml"; then
+  log "Integration tests passed"
+else
+  log "integration tests failed"
+
+  TEST_LOGS=$(cat /tmp/integration_test_failure_report.txt 2>/dev/null || echo "Check logs for details")
+
+  send_notification "failure" "Integration tests failed in test environment.
 
 Branch: $CI_BRANCH
 Time: $(date)
 Status: Tests failed
-
-Last 100 lines of logs: 
+ 
 $TEST_LOGS"
 
   exit 1
 fi
 
+log "All tests passed! Proceeding to production deployment..."
 
-log "Tests passed! Proceeding to production deployment..."
-
-##building services
+#create and merge pull request
 log "Creating Pull Request: $CI_BRANCH -> main..."
 PR_NUMBER=$(python3 /app/github_api.py create 2>&1 | grep -oP '(?<=Pull Request created: #)\d+' | head -1)
 
@@ -92,8 +105,9 @@ if [ -n "$PR_NUMBER" ]; then
   else
     log "Failed to merge Pull Request"
     send_notification "failure" "Pull Request #$PR_NUMBER could not be merged automatically.
-    Please check for merge conflicts at:
-    https://github.com/Gan-Shmual/Gan-Shmuel---Green-team/pull/$PR_NUMBER"
+
+Please check for merge conflicts at:
+https://github.com/Gan-Shmual/Gan-Shmuel---Green-team/pull/$PR_NUMBER"
     exit 1
   fi
 else
@@ -102,25 +116,37 @@ else
   exit 1
 fi
 
-log "Deploying to production..."
-docker compose -f docker-compose.prod.yml up -d --build
-log "Production deployment finished successfully!"
+log "Move to local 'main' branch after merge..."
+git fetch origin
+git checkout main
+git pull origin main
 
-send_notification "success" "Deployment to production completed successfully.
+COMMIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
+log "Will deploy commit: $COMMIT_SHA on branch 'main"
+
+#deploy to production
+log "Deploying to production..."
+if /app/deploy.sh "$REPO_DIR" "docker-compose.prod.yml"; then
+  log "Deployment successful"
+
+  send_notification "success" "Deployment to production completed successfully.
 
 Branch: $CI_BRANCH
 Pull Request: #$PR_NUMBER (merged)
+Commit: $COMMIT_SHA
 Time: $(date)
 Status: All tests passed
 Deployment: Production environment updated"
 
-log "CI/CD pipeline completed successfully!"
+  log "CI/CD pipeline completed successfully!"
+  exit 0
+else
+  log "Deployment failed"
+  send_notification "failure" "Deployment to production failed
 
-COMMIT_SHA=$(git rev-parse HEAD)
-echo "$COMMIT_SHA" > /workspace/current_deployment.txt
-
-if [ -f /workspace/previous_deployment.txt ]; then
-    rm -f /workspace/previous_deployment.txt.old
-    mv /workspace/previous_deployment.txt /workspace/previous_deployment.txt.old
+Branch: $CI_BRANCH
+Pull request: #$PR_NUMBER (merged)
+Time: $(date)
+Status: Deployment step failed"
+  exit 1
 fi
-mv /workspace/current_deployment.txt /workspace/previous_deployment.txt

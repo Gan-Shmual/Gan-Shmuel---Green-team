@@ -1,3 +1,11 @@
 # Billing team leader owns billing area
 
-- @Gan-Shmual/DevOps @leila2798
+- @Gan-Shmual/DevOps
+
+# Billing team leader owns billing area
+
+/billing-service/ @Gan-Shmual/DevOps @leila2798
+
+# Weight team leader owns weight area
+
+/weight-service/ @Gan-Shmual/DevOps @Dencool26

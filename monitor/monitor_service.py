@@ -9,11 +9,11 @@ app = Flask(__name__)
 #services to monitor
 SERVICES = {
     "billing-service": {
-        "url": "http://billing-service-prod:8000/health",
+        "url": "http://billing-service-prod:5001/health",
         "port": 8081
     },
     "weight-service": {
-        "url": "http://weight-service-prod:8000/health",
+        "url": "http://weight-service-prod:5000/health",
         "port": 8082
     }
 }

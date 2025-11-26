@@ -4,6 +4,7 @@ from flask import Flask
 from flaskr.db import db, init_db
 from flaskr.weights import init_weights
 
+from flaskr.routes.ui_routes import ui_bp
 
 def create_app(test_config=None):
     # create and configure the app
@@ -33,10 +34,11 @@ def create_app(test_config=None):
         db.create_all()
 
     # register blueprints
+    app.register_blueprint(ui_bp)
     app.register_blueprint(main.bp)
     app.register_blueprint(trucks.trucks)
     app.register_blueprint(bill.bill)
     app.register_blueprint(rates.rates)
     app.register_blueprint(provider.provider)
-
+ 
     return app

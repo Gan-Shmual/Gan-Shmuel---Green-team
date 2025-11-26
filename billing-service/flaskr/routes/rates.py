@@ -6,7 +6,7 @@ import os
 from sqlalchemy import text
 
 IN_FOLDER = "/app/in"
-LATEST = os.path.join(IN_FOLDER, "latest_rates.xlsx")
+LATEST = os.path.join(IN_FOLDER, "rates_latest.xlsx")
 
 rates = Blueprint('rates', __name__)
 
@@ -63,5 +63,5 @@ def download_rates():
     return send_file(
         LATEST,
         as_attachment=True,
-        download_name="rates.xlsx"
+        download_name="rates_latest.xlsx"
     )

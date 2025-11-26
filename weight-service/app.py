@@ -19,11 +19,6 @@ def create_app():
     import ui_routes
     app.register_blueprint(ui_routes.ui_bp)
 
-    # a simple page that says hello
-    @app.route('/hello')
-    def hello():
-        return 'Hello, World!'
-
     return app
 
 # This part is for running the app directly with `python app.py`
