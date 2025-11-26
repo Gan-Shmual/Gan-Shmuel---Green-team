@@ -29,7 +29,6 @@ services:
       db:
         condition: service_healthy
     environment:
-      - ENV=production
       - DB_HOST=db
       - DB_USER=${BILLING_DB_USER}
       - DB_PASSWORD=${BILLING_DB_PASSWORD}
@@ -46,8 +45,10 @@ services:
   weight-db:
     image: mysql:8.0
     container_name: weight_db_test
-    env_file:
-      - .env
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_TCP_PORT=3306
     volumes:
       - weight-test-data:/var/lib/mysql
       - ./weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
@@ -69,8 +70,12 @@ services:
     depends_on:
       weight-db:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      - MYSQL_HOST=weight-db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PORT=3306
     volumes:
       - ./weight-service/in:/app/in
     networks:
