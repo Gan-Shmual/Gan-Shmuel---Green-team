@@ -38,7 +38,15 @@ def create_pull_request(head_branch="development", base_branch="main", title=Non
         print(f"URL: {pr_data['html_url']}")
         return pr_data['number']
     elif response.status_code == 422:
-        print("Pull Request already exists or no changes to merge")
+        error_message = response.json().get('errors', [{}])[0].get('message', '')
+        if 'No commits between' in error_message or 'already exists' in response.text:
+            print("No new commits to merge - branches are already in sync")
+            existing_pr = get_existing_pr(head_branch, base_branch)
+            if existing_pr:
+                return existing_pr
+            # Return a special value to indicate "no PR needed but success"
+            return -1
+        print("Pull Request already exists or validation error")
         return get_existing_pr(head_branch, base_branch)
     else:
         print(f"Failed to create PR: {response.status_code}")
@@ -107,7 +115,10 @@ if __name__ == "__main__":
 
     if command == "create":
         pr_number = create_pull_request()
-        if pr_number:
+        if pr_number is not None:
+            # Print the PR number so the shell script can capture it
+            if pr_number == -1:
+                print("Branches in sync: -1")
             sys.exit(0)
         else:
             sys.exit(1)
