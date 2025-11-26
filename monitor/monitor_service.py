@@ -19,7 +19,7 @@ SERVICES = {
         "port": 8081
     },
     "weight-service": {
-        "url": "http://weight-service-prod:5000/health",
+        "url": "http://weight-service-prod:5000/api/health",
         "port": 8082
     }
 }
