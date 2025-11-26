@@ -4,7 +4,6 @@ import traceback
 
 post_weight_bp = Blueprint("post_weight", __name__)
 
-###############################################
 # VALIDATION UTILITIES
 ###############################################
 def validate_required_fields(data):
@@ -42,6 +41,7 @@ def convert_to_kg(weight, unit):
 ###############################################
 # DATABASE HELPERS
 ###############################################
+# Fetch last weigh for a truck (from transactions)
 def get_last_weigh(truck):
     conn = get_db()
     sql = """
@@ -55,7 +55,7 @@ def get_last_weigh(truck):
     with conn.cursor() as cur:
         cur.execute(sql, (truck,))
         row = cur.fetchone()
-        
+        # If found, return as dict
         if row:
             return {
                 "id": row["id"],
@@ -67,11 +67,23 @@ def get_last_weigh(truck):
 
     return None
 
+# Update session_id for a transaction 
 def update_session_id(transaction_id, session_id):
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute("UPDATE transactions SET session_id=%s WHERE id=%s;", (session_id, transaction_id))
     conn.commit()
+
+def validate_truck_exists(truck_id):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT container_id 
+            FROM containers_registered 
+            WHERE container_id = %s
+        """, (truck_id,))
+        row = cur.fetchone()
+        return row is not None
 
 ###############################################
 # DIRECTION RULE ENGINE
@@ -96,6 +108,8 @@ def validate_direction_rules(direction, last_weigh, force):
 ###############################################
 # SESSION HANDLING
 ###############################################
+# used for out 
+# it attaches the transaction to the previous in session 
 def resolve_session_id(direction, last_weigh):
     if direction in ["in", "none"]:
         return None
@@ -105,11 +119,9 @@ def resolve_session_id(direction, last_weigh):
 # Tara & Containers fetch
 ###############################################
 def get_truck_tara(truck_id):
-    """Fetch tara value for a specific truck from database"""
     try:
         conn = get_db()
         with conn.cursor() as cur:
-            # First, try to get it from containers_registered (this is where truck taras are stored!)
             cur.execute("""
                 SELECT weight 
                 FROM containers_registered 
@@ -120,7 +132,7 @@ def get_truck_tara(truck_id):
             if result and result['weight'] is not None:
                 return result['weight']
             
-            # If not found there, fall back to checking previous transactions
+            # If not found in db, check previous transactions
             cur.execute("""
                 SELECT truckTara 
                 FROM transactions 
@@ -136,7 +148,6 @@ def get_truck_tara(truck_id):
         return None
     
 def get_container_info(container_id):
-    """Fetch info for a specific container from database"""
     try:
         conn = get_db()
         with conn.cursor() as cur:
@@ -151,7 +162,6 @@ def get_container_info(container_id):
         return None
 
 def get_all_containers_info(containers):
-    """Fetch info for multiple containers"""
     containers_data = []
     for container_id in containers:
         container_info = get_container_info(container_id.strip())
@@ -160,24 +170,26 @@ def get_all_containers_info(containers):
     return containers_data
 
 def validate_containers(containers):
-    """Validate that all containers exist and have non-NULL weights"""
     conn = get_db()
-    unknown_containers = []
-    
+    errors = []
+
     with conn.cursor() as cur:
-        for container_id in containers:
+        for cid in containers:
+            cid = cid.strip()
+
             cur.execute("""
-                SELECT container_id, weight 
+                SELECT weight 
                 FROM containers_registered 
                 WHERE container_id = %s
-            """, (container_id.strip(),))
-            result = cur.fetchone()
-            
-            # If container doesn't exist OR weight is NULL
-            if result is None or result['weight'] is None:
-                unknown_containers.append(container_id.strip())
-    
-    return unknown_containers
+            """, (cid,))
+            row = cur.fetchone()
+
+            if row is None:
+                errors.append(f"{cid} not registered, please register it first")
+            elif row["weight"] is None:
+                errors.append(f"{cid} NULL weight in database, please update its weight first")
+
+    return errors
 
 ###############################################
 # INSERT + UPDATE
@@ -285,48 +297,62 @@ def build_response(direction, transaction_id, truck, bruto, truck_tara, neto):
 ###############################################
 @post_weight_bp.route('/weight', methods=['POST'])
 def post_weight():
-    # Helper to get data safely
-    data = request.get_json() 
-    if not data:
-        data = request.form
-
-    # missing fields
-    missing = validate_required_fields(data)
-    if missing:
-        return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
-
-    # weight validation
     try:
-        weight = int(data["weight"])
-        if weight <= 0:
-            return jsonify({"error": "weight must be positive"}), 400
-    except ValueError:
-        return jsonify({"error": "weight must be integer"}), 400
+        # 1. Helper to get data safely
+        # Use silent=True so Flask doesn't crash with HTML 400 if JSON is malformed
+        data = request.get_json(silent=True) 
+        if not data:
+            data = request.form
+        
+        # If data is still None (malformed JSON sent), return error manually
+        if data is None:
+            return jsonify({"error": "Invalid JSON or empty body"}), 400
 
-    # normalize
-    direction, truck, produce, unit = normalize_input(data)
-    if direction not in ["in", "out", "none"]:
-        return jsonify({"error": "invalid direction"}), 400
-    if unit not in ["kg", "lbs"]:
-        return jsonify({"error": "unit must be kg/lbs"}), 400
+        # 2. Missing fields validation
+        missing = validate_required_fields(data)
+        if missing:
+            return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
-    # force
-    force = parse_force(data["force"])
-    if force is None:
-        return jsonify({"error": "force must be true/false"}), 400
+        # 3. Weight validation
+        try:
+            weight = int(data["weight"])
+            if weight <= 0:
+                return jsonify({"error": "weight must be positive"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "weight must be integer"}), 400
 
-    containers = parse_containers(data["containers"])
-    weight = convert_to_kg(weight, unit)
+        # 4. Normalize
+        direction, truck, produce, unit = normalize_input(data)
+        if direction not in ["in", "out", "none"]:
+            return jsonify({"error": "invalid direction"}), 400
+        if unit not in ["kg", "lbs"]:
+            return jsonify({"error": "unit must be kg/lbs"}), 400
 
-    # Validate containers - check for unknown or NULL weight containers
-    unknown_containers = validate_containers(containers)
-    if unknown_containers:
-        return jsonify({
-            "error": f"Unknown containers (or containers with missing weight): {', '.join(unknown_containers)}"
-        }), 400
+        # 5. Force
+        force = parse_force(data.get("force")) # Use .get() to be safe
+        if force is None:
+            return jsonify({"error": "force must be true/false"}), 400
 
-    try:
-        # last weigh
+        containers = parse_containers(data["containers"])
+        weight = convert_to_kg(weight, unit)
+
+        # 6. Validate truck existence (Database Call)
+        # NOW INSIDE THE TRY BLOCK to prevent crash if DB is empty/error
+        if truck.lower() not in ["na", "none"]:
+            if not validate_truck_exists(truck):
+                return jsonify({
+                    "error": "Truck is not registered. Please register your truck and come back (use batch weight)."
+                }), 400
+
+        # 7. Validate containers (Database Call)
+        # NOW INSIDE THE TRY BLOCK
+        unknown_containers = validate_containers(containers)
+        if unknown_containers:
+            return jsonify({
+                "error": f"Unknown containers: {', '.join(unknown_containers)}"
+            }), 400
+
+        # 8. Main Logic
         last = get_last_weigh(truck)
 
         # rules
@@ -353,6 +379,8 @@ def post_weight():
         return jsonify(build_response(direction, tx_id, truck, weight, truck_tara, neto)), 200
 
     except Exception as e:
+        # This catches DB connection errors, SQL errors, and logic errors
         print("!!! Error in POST /weight !!!")
         traceback.print_exc()
-        return jsonify({"error": "Internal Server Error"}), 500
+        # Returns JSON 500 so the client sees a readable error object instead of HTML
+        return jsonify({"error": str(e) if str(e) else "Internal Server Error"}), 500

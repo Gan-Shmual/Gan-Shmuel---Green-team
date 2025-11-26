@@ -6,7 +6,7 @@ get_health_bp = Blueprint("get_health", __name__)
 
 
 @get_health_bp.route("/health", methods=["GET"])
-def health():
+def get_health():
     try:
         conn = get_db()
         with conn.cursor() as cur:

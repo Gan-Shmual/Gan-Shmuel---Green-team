@@ -19,39 +19,66 @@ def convert_unit(value, unit):
     raise ValueError(f"Invalid unit '{unit}' (must be kg or lbs)")
 
 ###############################################
-# UPDATE/INSERT CONTAINER WEIGHT
+# DB HELPER: BATCH UPSERT
 ###############################################
-def upsert_container(container_id, weight, unit):
+def batch_upsert(data_list):
+    """
+    Receives a list of tuples: [(id, weight), (id, weight), ...]
+    Performs a single connection open and bulk execution.
+    """
+    if not data_list:
+        return 0, []
+
     conn = get_db()
-    with conn.cursor() as cur:
-        sql = """
-            INSERT INTO containers_registered (container_id, weight, unit)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                weight = VALUES(weight),
-                unit = VALUES(unit);
-        """
-        cur.execute(sql, (container_id, weight, unit))
-    conn.commit()
+    inserted_count = 0
+    db_errors = []
+
+    try:
+        with conn.cursor() as cur:
+            # We iterate and execute one by one to catch specific row errors,
+            # BUT we use the same connection and commit only once at the end (or in chunks).
+            # For maximum safety, we can commit after every execution, 
+            # but since we reused the connection, it is much faster.
+            
+            sql = """
+                INSERT INTO containers_registered (container_id, weight)
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE
+                    weight = VALUES(weight);
+            """
+
+            for container_id, weight in data_list:
+                try:
+                    cur.execute(sql, (container_id, weight))
+                    inserted_count += 1
+                except Exception as row_error:
+                    db_errors.append(f"DB Error for {container_id}: {str(row_error)}")
+        
+        conn.commit() # Commit all changes at once
+        
+    except Exception as e:
+        return 0, [f"Critical Database Error: {str(e)}"]
+
+    return inserted_count, db_errors
 
 ###############################################
 # PARSE CSV FILE
 ###############################################
 def process_csv(filepath):
-    processed = 0
+    valid_data = [] # Store valid rows here first [(id, weight), ...]
     errors = []
 
     with open(filepath, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
 
-        for row in reader:
+        for row_idx, row in enumerate(reader):
             try:
                 if not row or len(row) < 2:
                     continue
 
                 # Skip header
                 first = row[0].strip().lower()
-                if first in ["id", "container_id"]:
+                if first in ["id", "container_id", "truck", "container"]:
                     continue
 
                 container_id = row[0].strip()
@@ -59,9 +86,7 @@ def process_csv(filepath):
 
                 # --- Handle NULL weights ---
                 if raw_weight.lower() in ["null", "", "none", "na"]:
-                    upsert_container(container_id, None, None)
-                    processed += 1
-                    errors.append(f"CSV row {row}: weight is NULL, inserted as NULL")
+                    valid_data.append((container_id, None))
                     continue
 
                 # Valid weight
@@ -69,19 +94,22 @@ def process_csv(filepath):
                 unit = row[2].strip().lower() if len(row) > 2 else "kg"
                 weight_kg = convert_unit(weight_val, unit)
 
-                upsert_container(container_id, weight_kg, "kg")
-                processed += 1
+                valid_data.append((container_id, weight_kg))
 
             except Exception as e:
-                errors.append(f"CSV row {row}: {str(e)}")
+                errors.append(f"CSV row {row_idx + 1}: {str(e)}")
 
-    return processed, errors
+    # Write to DB in batch
+    count, db_errors = batch_upsert(valid_data)
+    errors.extend(db_errors)
+    
+    return count, errors
 
 ###############################################
 # PARSE JSON FILE
 ###############################################
 def process_json(filepath):
-    processed = 0
+    valid_data = []
     errors = []
 
     with open(filepath, "r", encoding="utf-8") as f:
@@ -90,70 +118,96 @@ def process_json(filepath):
     if not isinstance(items, list):
         raise ValueError("JSON must contain a list of objects")
 
-    for obj in items:
+    for idx, obj in enumerate(items):
         try:
-            container_id = obj["id"]
+            # support both 'id' and 'container_id' keys
+            container_id = obj.get("id") or obj.get("container_id")
+            if not container_id:
+                errors.append(f"JSON item {idx}: Missing 'id'")
+                continue
+                
             raw_weight = obj.get("weight", None)
-            raw_unit = obj.get("unit", None)
+            raw_unit = obj.get("unit", "kg")
 
             # --- NULL weight handling ---
             if raw_weight in [None, "null", "", "None", "NA"]:
-                upsert_container(container_id, None, None)
-                processed += 1
-                errors.append(f"JSON object {obj}: weight is NULL, inserted as NULL")
+                valid_data.append((container_id, None))
                 continue
 
             # Normal case
             weight_val = float(raw_weight)
-            unit = raw_unit.lower() if raw_unit else "kg"
-            weight_kg = convert_unit(weight_val, unit)
+            weight_kg = convert_unit(weight_val, raw_unit)
 
-            upsert_container(container_id, weight_kg, "kg")
-            processed += 1
+            valid_data.append((container_id, weight_kg))
 
         except Exception as e:
-            errors.append(f"JSON object {obj}: {str(e)}")
+            errors.append(f"JSON item {idx}: {str(e)}")
 
-    return processed, errors
+    # Write to DB in batch
+    count, db_errors = batch_upsert(valid_data)
+    errors.extend(db_errors)
+
+    return count, errors
 
 ###############################################
 # MAIN ENDPOINT
 ###############################################
 @post_batch_bp.route('/batch-weight', methods=['POST'])
-def batch_weight():
-    data = request.get_json() or request.form
-
-    if "file" not in data:
-        return jsonify({"error": "Missing required field: file"}), 400
-
-    filename = data["file"].strip()
-    filepath = f"/app/in/{filename}"
-
-    ext = filename.lower().split(".")[-1]
-    # check extnesion
-    if ext not in ["csv", "json"]:
-        return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
-
-    if not os.path.isfile(filepath):
-        return jsonify({"error": f"File '{filename}' not found in /in"}), 404
+def post_batch_weight():
+    filename = None
+    filepath = None
     
     try:
+        # 1. Check if a file is uploaded via Multipart/Form-Data (UI)
+        if 'file' in request.files:
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({"error": "No selected file"}), 400
+            
+            filename = file.filename
+            # Save file to /app/in/
+            filepath = os.path.join('/app/in', filename)
+            
+            # Ensure directory exists
+            os.makedirs('/app/in', exist_ok=True)
+            file.save(filepath)
+
+        # 2. Check if filename is provided in JSON/Form (API)
+        else:
+            data = request.get_json(silent=True) or request.form
+            if data and "file" in data:
+                filename = data["file"].strip()
+                filepath = f"/app/in/{filename}"
+            else:
+                return jsonify({"error": "Missing required field: file (binary or filename string)"}), 400
+
+        # 3. Validate File Existence and Format
+        if not filename or not filepath:
+            return jsonify({"error": "Could not determine file"}), 400
+
+        ext = filename.lower().split(".")[-1]
+        if ext not in ["csv", "json"]:
+            return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
+
+        if not os.path.isfile(filepath):
+            return jsonify({"error": f"File '{filename}' not found in /in"}), 404
+        
+        # 4. Process File
+        processed = 0
+        errors = []
+        
         if ext == "csv":
             processed, errors = process_csv(filepath)
-
         elif ext == "json":
             processed, errors = process_json(filepath)
 
-        else:
-            return jsonify({"error": "Unsupported file format. Must be CSV or JSON"}), 400
+        return jsonify({
+            "file": filename,
+            "processed": processed,
+            "errors": errors
+        }), 200
 
     except Exception as e:
         print("!!! ERROR in /batch-weight !!!")
         traceback.print_exc()
-        return jsonify({"error": f"Internal error while processing file: {str(e)}"}), 500
-
-    return jsonify({
-        "file": filename,
-        "processed": processed,
-        "errors": errors
-    }), 200
+        return jsonify({"error": f"Internal error: {str(e)}"}), 500
