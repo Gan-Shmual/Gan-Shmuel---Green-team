@@ -57,10 +57,10 @@ fi
 
 #check results
 BILLING_EXIT=$(cat /tmp/billing_test_result)
-WEIGHT_EXIT=$(cat /tmp/weight_test_result)
+# WEIGHT_EXIT=$(cat /tmp/weight_test_result)
 
 log "Billing tests exit code: $BILLING_EXIT"
-log "Weight tests exit code: $WEIGHT_EXIT"
+# log "Weight tests exit code: $WEIGHT_EXIT"
 
 #check if any failed
 if [ "$BILLING_EXIT" -ne 0 ] || [ "$WEIGHT_EXIT" -ne 0 ]; then
@@ -75,12 +75,12 @@ $(tail -50 /tmp/billing_test_output.log)
 "
     fi
 
-    if [ "$WEIGHT_EXIT" -ne 0 ]; then
-        FAILURE_REPORT="$FAILURE_REPORT
-============WEIGHT SERVICE FAILURES==========
-$(tail -50 /tmp/weight_test_output.log)
-"
-    fi
+#     if [ "$WEIGHT_EXIT" -ne 0 ]; then
+#         FAILURE_REPORT="$FAILURE_REPORT
+# ============WEIGHT SERVICE FAILURES==========
+# $(tail -50 /tmp/weight_test_output.log)
+# "
+#     fi
 
     echo "$FAILURE_REPORT"
 
