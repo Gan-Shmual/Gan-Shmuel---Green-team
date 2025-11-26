@@ -16,9 +16,35 @@ services:
       - GMAIL_USER=${GMAIL_USER}
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - TEAM_EMAILS=${TEAM_EMAILS}
+      # Database environment variables for weight-service
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_PORT=${MYSQL_PORT}
+      # Database environment variables for billing-service
+      - BILLING_DB_HOST=${BILLING_DB_HOST}
+      - BILLING_DB_USER=${BILLING_DB_USER}
+      - BILLING_DB_NAME=${BILLING_DB_NAME}
+      - BILLING_DB_PASSWORD=${BILLING_DB_PASSWORD}
+      - BILLING_DB_PORT=${BILLING_DB_PORT}
+      - APP_PORT=${APP_PORT}
+      - WEIGHTS_PORT=${WEIGHTS_PORT}
+      - WEIGHTS_HOST=${WEIGHTS_HOST}
+      # Path configuration for docker.sock usage
+      - HOST_PROJECT_ROOT=${PWD}
     volumes:
       # Allow CI container to run Docker commands on the host
       - /var/run/docker.sock:/var/run/docker.sock
 
       # Workspace where we clone + build the repo
       - ./ci-workspace:/workspace
+
+      # Mount the workspace at the host path so docker can access it via absolute paths
+      # This is needed because docker compose with --project-directory uses absolute paths
+      - ./ci-workspace:${PWD}/ci-workspace
