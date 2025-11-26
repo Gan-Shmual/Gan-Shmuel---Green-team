@@ -1,21 +1,107 @@
-include:
-  - ./weight-service/docker-compose.yml
-  - ./billing-service/docker-compose.yml
-  #- docker-compose.yaml
 services:
+
+  db:
+    image: mysql:8.0
+    container_name: billing-db-test
+    environment:
+      - MYSQL_ROOT_PASSWORD=${BILLING_DB_PASSWORD}
+      - MYSQL_DATABASE=${BILLING_DB_NAME}
+      - MYSQL_TCP_PORT=${BILLING_DB_PORT}
+    volumes:
+      - billing-test-data:/var/lib/mysql
+      - ./billing-service/data/init:/docker-entrypoint-initdb.d
+    #ports:
+    #  - "3307:3306"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${BILLING_DB_PASSWORD}"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  billing-service:
+    build: ./billing-service
+    container_name: billing-service-test
+    #ports:
+    #  - "8088:5001"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_USER=${BILLING_DB_USER}
+      - DB_PASSWORD=${BILLING_DB_PASSWORD}
+      - DB_NAME=${BILLING_DB_NAME}
+      - DB_PORT=${BILLING_DB_PORT}
+      - WEIGHTS_PORT=${WEIGHTS_PORT}
+      - APP_PORT=${APP_PORT}
+      - WEIGHTS_HOST=weight-service
+    volumes:
+      - ./billing-service/data/in:/app/in
+    networks:
+      - test-network
+
+  weight-db:
+    image: mysql:8.0
+    container_name: weight_db_test
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_TCP_PORT=3306
+    volumes:
+      - weight-test-data:/var/lib/mysql
+      - ./weight-service/DB/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    #ports:
+    #  - "3309:3306"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  weight-service:
+    build: ./weight-service
+    container_name: weight-service-test
+    #ports:
+    #  - "8089:5000"
+    depends_on:
+      weight-db:
+        condition: service_healthy
+    environment:
+      - MYSQL_HOST=weight-db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PORT=3306
+    volumes:
+      - ./weight-service/in:/app/in
+    networks:
+      - test-network
+
+  # ---test runner 
   test-runner:
     build: ./tests
     container_name: test-runner
     depends_on:
-    - weight-app
-    - weight-db
-    - billing-service
-    - db #billing db name
-
-  
+      - weight-service
+      - weight-db
+      - billing-service
+      - db
     volumes:
       - ./tests:/tests
-    command: ./tests/init.sh
-  
-      
+    command: ["/bin/sh", "/tests/init.sh"]
+    networks:
+      - test-network
 
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  billing-test-data:
+    driver: local
+  weight-test-data:
+    driver: local
