@@ -34,7 +34,6 @@ def normalize_input(data):
 
 ###############################################
 # WEIGHT UTILITIES
-# WEIGHT UTILITIES
 ###############################################
 def convert_to_kg(weight, unit):
     return weight if unit == "kg" else int(round(weight * 0.453592))
@@ -67,6 +66,7 @@ def get_last_weigh(truck):
             }
 
     return None
+
 # Update session_id for a transaction 
 def update_session_id(transaction_id, session_id):
     conn = get_db()
@@ -297,55 +297,62 @@ def build_response(direction, transaction_id, truck, bruto, truck_tara, neto):
 ###############################################
 @post_weight_bp.route('/weight', methods=['POST'])
 def post_weight():
-    # Helper to get data safely
-    data = request.get_json() 
-    if not data:
-        data = request.form
-
-    # missing fields
-    missing = validate_required_fields(data)
-    if missing:
-        return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
-
-    # weight validation
     try:
-        weight = int(data["weight"])
-        if weight <= 0:
-            return jsonify({"error": "weight must be positive"}), 400
-    except ValueError:
-        return jsonify({"error": "weight must be integer"}), 400
+        # 1. Helper to get data safely
+        # Use silent=True so Flask doesn't crash with HTML 400 if JSON is malformed
+        data = request.get_json(silent=True) 
+        if not data:
+            data = request.form
+        
+        # If data is still None (malformed JSON sent), return error manually
+        if data is None:
+            return jsonify({"error": "Invalid JSON or empty body"}), 400
 
-    # normalize
-    direction, truck, produce, unit = normalize_input(data)
-    if direction not in ["in", "out", "none"]:
-        return jsonify({"error": "invalid direction"}), 400
-    if unit not in ["kg", "lbs"]:
-        return jsonify({"error": "unit must be kg/lbs"}), 400
+        # 2. Missing fields validation
+        missing = validate_required_fields(data)
+        if missing:
+            return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
-    # force
-    force = parse_force(data["force"])
-    if force is None:
-        return jsonify({"error": "force must be true/false"}), 400
+        # 3. Weight validation
+        try:
+            weight = int(data["weight"])
+            if weight <= 0:
+                return jsonify({"error": "weight must be positive"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "weight must be integer"}), 400
 
-    containers = parse_containers(data["containers"])
-    weight = convert_to_kg(weight, unit)
+        # 4. Normalize
+        direction, truck, produce, unit = normalize_input(data)
+        if direction not in ["in", "out", "none"]:
+            return jsonify({"error": "invalid direction"}), 400
+        if unit not in ["kg", "lbs"]:
+            return jsonify({"error": "unit must be kg/lbs"}), 400
 
-    # Validate truck existence
-    if truck.lower() not in ["na", "none"]:
-        if not validate_truck_exists(truck):
+        # 5. Force
+        force = parse_force(data.get("force")) # Use .get() to be safe
+        if force is None:
+            return jsonify({"error": "force must be true/false"}), 400
+
+        containers = parse_containers(data["containers"])
+        weight = convert_to_kg(weight, unit)
+
+        # 6. Validate truck existence (Database Call)
+        # NOW INSIDE THE TRY BLOCK to prevent crash if DB is empty/error
+        if truck.lower() not in ["na", "none"]:
+            if not validate_truck_exists(truck):
+                return jsonify({
+                    "error": "Truck is not registered. Please register your truck and come back (use batch weight)."
+                }), 400
+
+        # 7. Validate containers (Database Call)
+        # NOW INSIDE THE TRY BLOCK
+        unknown_containers = validate_containers(containers)
+        if unknown_containers:
             return jsonify({
-                "error": "Truck is not registered. Please register your truck and come back (use batch weight)."
+                "error": f"Unknown containers: {', '.join(unknown_containers)}"
             }), 400
 
-    # Validate containers - check for unknown or NULL weight containers
-    unknown_containers = validate_containers(containers)
-    if unknown_containers:
-        return jsonify({
-            "error": f"Unknown containers: {', '.join(unknown_containers)}"
-        }), 400
-
-    try:
-        # last weigh
+        # 8. Main Logic
         last = get_last_weigh(truck)
 
         # rules
@@ -372,6 +379,8 @@ def post_weight():
         return jsonify(build_response(direction, tx_id, truck, weight, truck_tara, neto)), 200
 
     except Exception as e:
+        # This catches DB connection errors, SQL errors, and logic errors
         print("!!! Error in POST /weight !!!")
         traceback.print_exc()
-        return jsonify({"error": "Internal Server Error"}), 500
+        # Returns JSON 500 so the client sees a readable error object instead of HTML
+        return jsonify({"error": str(e) if str(e) else "Internal Server Error"}), 500
